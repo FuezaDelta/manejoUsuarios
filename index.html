@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fuerza Delta - Gestión de usuarios y pagos</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+
+<body>
+  <header class="header">
+    <button type="button" class="nav-toggle" id="navToggle" aria-label="Abrir menú">☰</button>
+    <div class="logo-wrap">
+      <img src="assets/logo.png" alt="" class="logo-img" onerror="this.style.display='none'" />
+      <h1 class="logo">FUERZA<br><span>DELTA</span></h1>
+    </div>
+    <nav class="nav" id="nav">
+      <a href="#inicio" class="nav-link active">Inicio</a>
+      <a href="#usuarios" class="nav-link">Usuarios</a>
+      <a href="#agregar-usuario" class="nav-link">Nuevo usuario</a>
+      <a href="#registrar-pago" class="nav-link">Registrar pago</a>
+      <a href="#planes" class="nav-link">Planes</a>
+    </nav>
+  </header>
+
+  <main class="main">
+    <!-- Sección Inicio (Dashboard) -->
+    <section id="inicio" class="section active">
+      <h2>Inicio</h2>
+      <div class="cards">
+        <div class="card card--activos">
+          <span class="card-value" id="countActivos">-</span>
+          <span class="card-label">Membresías activas</span>
+        </div>
+        <div class="card card--vencidas">
+          <span class="card-value" id="countVencidas">-</span>
+          <span class="card-label">Membresías vencidas</span>
+        </div>
+      </div>
+      <div class="block">
+        <h3>Próximos a vencer (7 días)</h3>
+        <ul class="list" id="listaProximosVencer"></ul>
+      </div>
+      <div class="block">
+        <h3>Usuarios vencidos</h3>
+        <ul class="list" id="listaVencidos"></ul>
+      </div>
+    </section>
+
+    <!-- Sección Lista de usuarios -->
+    <section id="usuarios" class="section">
+      <h2>Usuarios</h2>
+      <div class="toolbar">
+        <input type="search" id="buscarUsuario" class="input" placeholder="Buscar por nombre, teléfono..." />
+      </div>
+      <ul class="list list--usuarios" id="listaUsuarios"></ul>
+    </section>
+
+    <!-- Sección Agregar usuario (incluye primer pago) -->
+    <section id="agregar-usuario" class="section">
+      <h2>Nuevo usuario</h2>
+      <p class="form-hint">Al guardar se registra el usuario y su primer pago.</p>
+      <form id="formUsuario" class="form form--two-cols">
+        <div class="form-field">
+          <label class="label" for="nombre">Nombre</label>
+          <input type="text" id="nombre" class="input" required />
+        </div>
+        <div class="form-field">
+          <label class="label" for="apellido">Apellido</label>
+          <input type="text" id="apellido" class="input" required />
+        </div>
+        <div class="form-field">
+          <label class="label" for="telefono">Teléfono</label>
+          <input type="tel" id="telefono" class="input" required />
+        </div>
+        <div class="form-field">
+          <label class="label" for="email">Email</label>
+          <input type="email" id="email" class="input" />
+        </div>
+        <div class="form-field">
+          <label class="label" for="nuevoUsuarioPlanId">Plan (primer pago)</label>
+          <select id="nuevoUsuarioPlanId" class="input" required>
+            <option value="">Seleccionar plan...</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label class="label" for="nuevoUsuarioMonto">Monto pagado</label>
+          <input type="number" id="nuevoUsuarioMonto" class="input" min="0" step="1" required />
+        </div>
+        <div class="form-field">
+          <label class="label" for="nuevoUsuarioMetodoPago">Método de pago</label>
+          <select id="nuevoUsuarioMetodoPago" class="input">
+            <option value="Efectivo">Efectivo</option>
+            <option value="Transferencia">Transferencia</option>
+            <option value="Tarjeta">Tarjeta</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label class="label" for="nuevoUsuarioFechaPago">Fecha de pago</label>
+          <input type="date" id="nuevoUsuarioFechaPago" class="input" required />
+        </div>
+        <button type="submit" class="btn btn--primary">Guardar usuario y registrar pago</button>
+      </form>
+    </section>
+
+    <!-- Sección Registrar pago -->
+    <section id="registrar-pago" class="section">
+      <h2>Registrar pago</h2>
+      <p class="form-hint">Escribe nombre o teléfono para buscar al cliente.</p>
+      <form id="formPago" class="form">
+        <label class="label">Usuario</label>
+        <div class="combobox-wrap">
+          <input type="text" id="pagoUsuarioBuscar" class="input combobox-input" placeholder="Buscar por nombre o teléfono..." autocomplete="off" />
+          <input type="hidden" id="pagoUsuarioId" name="pagoUsuarioId" />
+          <div class="combobox-dropdown" id="comboboxDropdown" role="listbox" aria-hidden="true"></div>
+        </div>
+        <label class="label">Plan</label>
+        <select id="pagoPlanId" class="input" required>
+          <option value="">Seleccionar plan...</option>
+        </select>
+        <label class="label">Monto pagado</label>
+        <input type="number" id="montoPagado" class="input" min="0" step="1" required />
+        <label class="label">Método de pago</label>
+        <select id="metodoPago" class="input">
+          <option value="Efectivo">Efectivo</option>
+          <option value="Transferencia">Transferencia</option>
+          <option value="Tarjeta">Tarjeta</option>
+        </select>
+        <label class="label">Fecha de pago</label>
+        <input type="date" id="fechaPago" class="input" required />
+        <button type="submit" class="btn btn--primary">Registrar pago</button>
+      </form>
+    </section>
+
+    <!-- Sección Planes -->
+    <section id="planes" class="section">
+      <h2>Planes</h2>
+      <ul class="list list--planes" id="listaPlanes"></ul>
+    </section>
+  </main>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+
+</html>

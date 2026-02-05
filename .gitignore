@@ -1,0 +1,7 @@
+# Opcional: si usas un archivo de config local con claves reales, no lo subas
+# js/firebase-config.local.js
+
+.DS_Store
+Thumbs.db
+*.log
+node_modules/
