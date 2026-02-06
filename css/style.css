@@ -93,7 +93,6 @@ body {
 }
 
 .nav {
-  display: none;
   position: absolute;
   top: 100%;
   left: 0;
@@ -102,10 +101,19 @@ body {
   padding: 0.5rem;
   background: var(--bg-card);
   border-bottom: 1px solid var(--border);
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  pointer-events: none;
+  transform: translateY(-4px);
+  transition: max-height 0.22s ease-out, opacity 0.18s ease-out, transform 0.22s ease-out;
 }
 
 .nav.is-open {
-  display: flex;
+  max-height: 260px; /* suficiente para los enlaces */
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
 }
 
 .nav-link {
@@ -122,6 +130,15 @@ body {
   color: var(--olive);
 }
 
+/* Menú móvil: cada opción en una fila, sin cortar palabras */
+@media (max-width: 639px) {
+  .nav-link {
+    display: block;
+    width: 100%;
+    white-space: nowrap;
+  }
+}
+
 /* Main content */
 .main {
   padding: 1rem;
@@ -136,6 +153,18 @@ body {
 
 .section.active {
   display: block;
+  animation: fadeSlideIn 220ms ease-out;
+}
+
+@keyframes fadeSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .section h2 {
@@ -233,12 +262,18 @@ body {
 .user-item__estado--vencida { background: rgba(201, 74, 74, 0.2); color: var(--danger); }
 .user-item__estado--suspendida { background: rgba(184, 134, 11, 0.2); color: var(--warning); }
 
-.btn--renovar {
+.user-item__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-left: auto;
+}
+
+.btn--renovar,
+.btn--eliminar {
   padding: 0.4rem 0.75rem;
   font-size: 0.8rem;
   font-weight: 600;
-  background: var(--olive);
-  color: var(--bg);
   border: none;
   border-radius: 8px;
   cursor: pointer;
@@ -248,6 +283,20 @@ body {
 
 .btn--renovar:hover {
   background: var(--accent-hover);
+}
+
+.btn--renovar {
+  background: var(--olive);
+  color: var(--bg);
+}
+
+.btn--eliminar {
+  background: rgba(201, 74, 74, 0.15);
+  color: var(--danger);
+}
+
+.btn--eliminar:hover {
+  background: rgba(201, 74, 74, 0.3);
 }
 
 .list--planes li {
@@ -450,6 +499,12 @@ select.input {
     padding: 0;
     border: none;
     background: transparent;
+    max-height: none;
+    opacity: 1;
+    overflow: visible;
+    pointer-events: auto;
+    transform: none;
+    transition: none;
   }
 
   .nav-link {

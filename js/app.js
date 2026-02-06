@@ -6,6 +6,7 @@ import {
   getDocs,
   addDoc,
   updateDoc,
+  deleteDoc,
   query,
   where,
   orderBy,
@@ -57,7 +58,10 @@ async function cargarPlanes() {
   const snap = await getDocs(collection(db, "planes"));
   const planes = [];
   snap.forEach((d) => planes.push({ id: d.id, ...d.data() }));
-  return planes.filter((p) => p.activo !== false);
+  // Ordenar: primero mensualidad, luego bimestre, luego trimestre (por duración)
+  return planes
+    .filter((p) => p.activo !== false)
+    .sort((a, b) => (a.duracionDias || 0) - (b.duracionDias || 0));
 }
 
 function renderPlanes(planes) {
@@ -131,11 +135,36 @@ function renderUsuarios(usuarios, filtro = "") {
             <span class="user-item__name">${u.nombre || ""} ${u.apellido || ""}</span>
             <span class="user-item__meta">${u.telefono || ""} · Vence: ${finStr}</span>
             <span class="user-item__estado user-item__estado--${estado}">${u.estadoMembresia || "vencida"}</span>
-            <button type="button" class="btn btn--renovar" data-user-id="${u.id}">Renovar</button>
+            <div class="user-item__actions">
+              <button type="button" class="btn btn--renovar" data-user-id="${u.id}">Renovar</button>
+              <button type="button" class="btn btn--eliminar" data-user-id="${u.id}">Eliminar</button>
+            </div>
           </li>`;
         }
       )
       .join("");
+  }
+}
+
+async function eliminarUsuarioConPagos(usuarioId) {
+  const confirmar = window.confirm(
+    "¿Eliminar este usuario y TODOS sus pagos asociados? Esta acción no se puede deshacer."
+  );
+  if (!confirmar) return;
+  try {
+    // Borrar pagos del usuario
+    const q = query(collection(db, "pagos"), where("usuarioId", "==", usuarioId));
+    const pagosSnap = await getDocs(q);
+    const borrados = pagosSnap.docs.map((d) => deleteDoc(d.ref));
+    await Promise.all(borrados);
+
+    // Borrar el usuario
+    await deleteDoc(doc(db, "usuarios", usuarioId));
+
+    await init();
+  } catch (err) {
+    console.error("Error eliminando usuario:", err);
+    alert("No se pudo eliminar el usuario. Revisa la consola y las reglas de Firestore.");
   }
 }
 
@@ -396,12 +425,19 @@ document.getElementById("buscarUsuario").addEventListener("input", (e) => {
   renderUsuarios(window.__usuarios || [], e.target.value);
 });
 
-// Botón "Renovar" en la lista de usuarios
+// Botones en la lista de usuarios: Renovar / Eliminar
 document.getElementById("listaUsuarios").addEventListener("click", (e) => {
-  const btn = e.target.closest(".btn--renovar");
-  if (!btn) return;
-  const userId = btn.dataset.userId;
-  if (userId) irARenovarUsuario(userId);
+  const btnEliminar = e.target.closest(".btn--eliminar");
+  if (btnEliminar) {
+    const userId = btnEliminar.dataset.userId;
+    if (userId) eliminarUsuarioConPagos(userId);
+    return;
+  }
+  const btnRenovar = e.target.closest(".btn--renovar");
+  if (btnRenovar) {
+    const userId = btnRenovar.dataset.userId;
+    if (userId) irARenovarUsuario(userId);
+  }
 });
 
 // Inicialización
