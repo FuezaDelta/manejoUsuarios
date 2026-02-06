@@ -7,6 +7,7 @@ import {
   addDoc,
   updateDoc,
   deleteDoc,
+  writeBatch,
   query,
   where,
   orderBy,
@@ -131,11 +132,15 @@ function renderUsuarios(usuarios, filtro = "") {
           const estado = (u.estadoMembresia || "vencida").toLowerCase();
           const fin = u.fechaFinMembresia?.toDate?.();
           const finStr = fin ? fin.toLocaleDateString("es") : "—";
+          const msgWa = `Hola ${(u.nombre || "").trim()}, te contacto desde Fuerza Delta.`;
+          const wa = urlWhatsApp(u.telefono, msgWa);
+          const linkWa = wa ? `<a href="${wa}" target="_blank" rel="noopener" class="btn btn--whatsapp" title="Abrir WhatsApp">WhatsApp</a>` : "";
           return `<li class="user-item">
             <span class="user-item__name">${u.nombre || ""} ${u.apellido || ""}</span>
             <span class="user-item__meta">${u.telefono || ""} · Vence: ${finStr}</span>
             <span class="user-item__estado user-item__estado--${estado}">${u.estadoMembresia || "vencida"}</span>
             <div class="user-item__actions">
+              ${linkWa}
               <button type="button" class="btn btn--renovar" data-user-id="${u.id}">Renovar</button>
               <button type="button" class="btn btn--eliminar" data-user-id="${u.id}">Eliminar</button>
             </div>
@@ -221,11 +226,26 @@ function cerrarComboboxUsuarios() {
   dropdown.setAttribute("aria-hidden", "true");
 }
 
+
 // --- Dashboard ---
 function addDays(date, days) {
   const d = new Date(date);
   d.setDate(d.getDate() + days);
   return d;
+}
+
+function formatearTelefonoWhatsApp(telefono) {
+  const digits = (telefono || "").replace(/\D/g, "");
+  if (digits.length === 10) return "57" + digits;
+  if (digits.length === 12 && digits.startsWith("57")) return digits;
+  return digits || "";
+}
+
+function urlWhatsApp(telefono, mensaje) {
+  const num = formatearTelefonoWhatsApp(telefono);
+  if (!num) return "";
+  const text = encodeURIComponent(mensaje || "");
+  return `https://wa.me/${num}${text ? "?text=" + text : ""}`;
 }
 
 function actualizarDashboard(usuarios) {
@@ -260,7 +280,11 @@ function actualizarDashboard(usuarios) {
           (u) => {
             const fin = u.fechaFinMembresia?.toDate?.();
             const finStr = fin ? fin.toLocaleDateString("es") : "";
-            return `<li><strong>${u.nombre} ${u.apellido}</strong> — Vence ${finStr}</li>`;
+            const nombre = (u.nombre || "") + " " + (u.apellido || "");
+            const msg = `Hola ${(u.nombre || "").trim()}, tu membresía de Fuerza Delta vence el ${finStr}. Te esperamos para renovar.`;
+            const wa = urlWhatsApp(u.telefono, msg);
+            const linkWa = wa ? ` <a href="${wa}" target="_blank" rel="noopener" class="link-whatsapp" title="Abrir WhatsApp">WhatsApp</a>` : "";
+            return `<li><strong>${u.nombre} ${u.apellido}</strong> — Vence ${finStr}${linkWa}</li>`;
           }
         )
         .join("");
@@ -273,7 +297,10 @@ function actualizarDashboard(usuarios) {
           (u) => {
             const fin = u.fechaFinMembresia?.toDate?.();
             const finStr = fin ? fin.toLocaleDateString("es") : "";
-            return `<li><strong>${u.nombre} ${u.apellido}</strong> — Venció ${finStr}</li>`;
+            const msg = `Hola ${(u.nombre || "").trim()}, tu membresía de Fuerza Delta venció el ${finStr}. Pásate a renovar cuando puedas.`;
+            const wa = urlWhatsApp(u.telefono, msg);
+            const linkWa = wa ? ` <a href="${wa}" target="_blank" rel="noopener" class="link-whatsapp" title="Abrir WhatsApp">WhatsApp</a>` : "";
+            return `<li><strong>${u.nombre} ${u.apellido}</strong> — Venció ${finStr}${linkWa}</li>`;
           }
         )
         .join("");
@@ -417,6 +444,134 @@ document.querySelector('.nav-link[href="#registrar-pago"]').addEventListener("cl
   const id = document.getElementById("pagoUsuarioId").value;
   if (!id) {
     pagoUsuarioBuscar.value = "";
+  }
+});
+
+// --- Importar usuarios (carga masiva desde CSV) ---
+const PLANTILLA_CSV = "nombre;apellido;telefono;email;fechaRegistro;plan\nJuan;Pérez;3001234567;juan@ejemplo.com;01/02/2026;mensual_basic\nMaría;García;3109876543;;05/01/2026;bimestre_basic";
+
+function parseFecha(str) {
+  if (!str || typeof str !== "string") return null;
+  const s = str.trim();
+  if (!s) return null;
+  const parts = s.split(/[\/\-.]/).map((n) => parseInt(n, 10));
+  if (parts.length < 3) return null;
+  const [a, b, c] = parts;
+  if (s.match(/^\d{4}-\d{1,2}-\d{1,2}/)) return new Date(a, b - 1, c);
+  if (c > 31) return new Date(c, b - 1, a);
+  return new Date(c, b - 1, a);
+}
+
+function parseCSV(texto) {
+  const lineas = texto.split(/\r?\n/).filter((l) => l.trim());
+  if (lineas.length < 2) return [];
+  const sep = lineas[0].includes(";") ? ";" : ",";
+  const headers = lineas[0].split(sep).map((h) => h.trim().toLowerCase().replace(/^["']|["']$/g, ""));
+  const filas = [];
+  for (let i = 1; i < lineas.length; i++) {
+    const valores = [];
+    let rest = lineas[i];
+    while (rest.length) {
+      if (rest.startsWith('"')) {
+        const end = rest.indexOf('"', 1);
+        valores.push(end === -1 ? rest.slice(1) : rest.slice(1, end));
+        rest = end === -1 ? "" : rest.slice(end + 1).replace(/^[\s,;]/, "");
+      } else {
+        const idx = rest.search(new RegExp(`[${sep}]`));
+        valores.push(idx === -1 ? rest.trim() : rest.slice(0, idx).trim());
+        rest = idx === -1 ? "" : rest.slice(idx + 1);
+      }
+    }
+    const obj = {};
+    headers.forEach((h, j) => (obj[h] = (valores[j] || "").trim()));
+    if (obj.nombre || obj.apellido || obj.telefono) filas.push(obj);
+  }
+  return filas;
+}
+
+document.getElementById("descargarPlantilla").addEventListener("click", (e) => {
+  e.preventDefault();
+  const blob = new Blob(["\uFEFF" + PLANTILLA_CSV], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "plantilla_usuarios.csv";
+  a.click();
+  URL.revokeObjectURL(url);
+});
+
+let archivoCsvSeleccionado = null;
+document.getElementById("archivoCsv").addEventListener("change", (e) => {
+  archivoCsvSeleccionado = e.target.files[0] || null;
+  document.getElementById("btnImportar").disabled = !archivoCsvSeleccionado;
+  document.getElementById("resultadoImportacion").textContent = "";
+});
+
+document.getElementById("btnImportar").addEventListener("click", async () => {
+  if (!archivoCsvSeleccionado) return;
+  const btn = document.getElementById("btnImportar");
+  const resultado = document.getElementById("resultadoImportacion");
+  btn.disabled = true;
+  resultado.textContent = "Importando...";
+  try {
+    const texto = await archivoCsvSeleccionado.text();
+    const filas = parseCSV(texto);
+    if (filas.length === 0) {
+      resultado.textContent = "No se encontraron filas válidas (nombre, apellido o teléfono). Revisa el CSV.";
+      btn.disabled = false;
+      return;
+    }
+    const colRef = collection(db, "usuarios");
+    const BATCH_SIZE = 500;
+    let importados = 0;
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+    for (let i = 0; i < filas.length; i += BATCH_SIZE) {
+      const batch = writeBatch(db);
+      const chunk = filas.slice(i, i + BATCH_SIZE);
+      for (const row of chunk) {
+        const fechaRegistroDate = parseFecha(row.fecharegistro || row.fecha_registro) || new Date();
+        const planIdRaw = (row.plan || row.tipomembresia || row.membresia || "").trim();
+        const planEncontrado = planIdRaw
+          ? planes.find(
+              (p) =>
+                p.id === planIdRaw ||
+                (p.nombre || "").toLowerCase() === planIdRaw.toLowerCase()
+            )
+          : null;
+        const datos = {
+          nombre: (row.nombre || "").trim(),
+          apellido: (row.apellido || "").trim(),
+          telefono: (row.telefono || "").trim(),
+          email: (row.email || "").trim() || null,
+          fechaRegistro: Timestamp.fromDate(fechaRegistroDate),
+          estadoMembresia: "vencida",
+        };
+        if (planEncontrado) {
+          const duracionDias = planEncontrado.duracionDias || 30;
+          const fechaFin = new Date(fechaRegistroDate);
+          fechaFin.setDate(fechaFin.getDate() + duracionDias);
+          datos.membresiaActual = planEncontrado.id;
+          datos.fechaInicioMembresia = Timestamp.fromDate(fechaRegistroDate);
+          datos.fechaFinMembresia = Timestamp.fromDate(fechaFin);
+          datos.estadoMembresia = fechaFin >= hoy ? "activa" : "vencida";
+        }
+        const ref = doc(colRef);
+        batch.set(ref, datos);
+        importados++;
+      }
+      await batch.commit();
+    }
+    resultado.textContent = `Se importaron ${importados} usuarios. Puedes ir a Usuarios para verlos y renovar cuando paguen.`;
+    document.getElementById("archivoCsv").value = "";
+    archivoCsvSeleccionado = null;
+    btn.disabled = true;
+    await init();
+  } catch (err) {
+    console.error(err);
+    resultado.textContent = "Error al importar. Revisa que el CSV tenga columnas nombre, apellido, telefono, email.";
+  } finally {
+    btn.disabled = false;
   }
 });
 
