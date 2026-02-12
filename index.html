@@ -62,6 +62,7 @@
     <section id="agregar-usuario" class="section">
       <h2>Nuevo usuario</h2>
       <p class="form-hint">Al guardar se registra el usuario y su primer pago.</p>
+      <div id="mensajeNuevoUsuario" class="mensaje-resultado" aria-live="polite"></div>
       <form id="formUsuario" class="form form--two-cols">
         <div class="form-field">
           <label class="label" for="nombre">Nombre</label>
@@ -73,7 +74,7 @@
         </div>
         <div class="form-field">
           <label class="label" for="telefono">Teléfono</label>
-          <input type="tel" id="telefono" class="input" required />
+          <input type="tel" id="telefono" class="input" pattern="[0-9]*" inputmode="numeric" minlength="10" maxlength="10" required />
         </div>
         <div class="form-field">
           <label class="label" for="email">Email</label>
@@ -101,7 +102,10 @@
           <label class="label" for="nuevoUsuarioFechaPago">Fecha de pago</label>
           <input type="date" id="nuevoUsuarioFechaPago" class="input" required />
         </div>
-        <button type="submit" class="btn btn--primary">Guardar usuario y registrar pago</button>
+        <div class="form-actions">
+          <button type="submit" class="btn btn--primary">Guardar usuario y registrar pago</button>
+          <button type="button" id="btnLimpiarNuevoUsuario" class="btn btn--secondary">Limpiar campos</button>
+        </div>
       </form>
     </section>
 

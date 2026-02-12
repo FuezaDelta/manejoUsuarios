@@ -14,6 +14,8 @@ import {
   Timestamp,
 } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 import { firebaseConfig } from "./firebase-config.js";
+import { inicializarImportacion } from "./importar-excel.js";
+import { confirmarEliminacion } from "./modal.js";
 
 // Inicializar Firebase
 const app = initializeApp(firebaseConfig);
@@ -126,19 +128,33 @@ function renderUsuarios(usuarios, filtro = "") {
   if (filtrados.length === 0) {
     list.innerHTML = "<li class='empty'>No hay usuarios o no coincide la búsqueda.</li>";
   } else {
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+    
     list.innerHTML = filtrados
       .map(
         (u) => {
-          const estado = (u.estadoMembresia || "vencida").toLowerCase();
           const fin = u.fechaFinMembresia?.toDate?.();
           const finStr = fin ? fin.toLocaleDateString("es") : "—";
+          
+          // Calcular estado dinámicamente basándose en la fecha
+          let estado = "vencida";
+          let estadoTexto = "Vencida";
+          if (fin) {
+            if (fin >= hoy) {
+              estado = "activa";
+              estadoTexto = "Activa";
+            }
+          }
+          
           const msgWa = `Hola ${(u.nombre || "").trim()}, te contacto desde Fuerza Delta.`;
           const wa = urlWhatsApp(u.telefono, msgWa);
-          const linkWa = wa ? `<a href="${wa}" target="_blank" rel="noopener" class="btn btn--whatsapp" title="Abrir WhatsApp">WhatsApp</a>` : "";
+          const linkWa = wa ? `<a href="${wa}" target="_blank" rel="noopener" class="btn btn--whatsapp" title="WhatsApp">WhatsApp</a>` : "";
           return `<li class="user-item">
             <span class="user-item__name">${u.nombre || ""} ${u.apellido || ""}</span>
-            <span class="user-item__meta">${u.telefono || ""} · Vence: ${finStr}</span>
-            <span class="user-item__estado user-item__estado--${estado}">${u.estadoMembresia || "vencida"}</span>
+            <span class="user-item__meta">
+              ${u.telefono || ""} · Vence: ${finStr} - <span class="user-item__estado-inline user-item__estado-inline--${estado}">${estadoTexto}</span>
+            </span>
             <div class="user-item__actions">
               ${linkWa}
               <button type="button" class="btn btn--renovar" data-user-id="${u.id}">Renovar</button>
@@ -152,10 +168,17 @@ function renderUsuarios(usuarios, filtro = "") {
 }
 
 async function eliminarUsuarioConPagos(usuarioId) {
-  const confirmar = window.confirm(
-    "¿Eliminar este usuario y TODOS sus pagos asociados? Esta acción no se puede deshacer."
-  );
+  // Obtener información del usuario para mostrar su nombre
+  const usuarios = window.__usuarios || [];
+  const usuario = usuarios.find((u) => u.id === usuarioId);
+  const nombreCompleto = usuario 
+    ? `${usuario.nombre || ""} ${usuario.apellido || ""}`.trim() 
+    : "este usuario";
+  
+  // Mostrar modal de confirmación personalizado
+  const confirmar = await confirmarEliminacion(nombreCompleto);
   if (!confirmar) return;
+  
   try {
     // Borrar pagos del usuario
     const q = query(collection(db, "pagos"), where("usuarioId", "==", usuarioId));
@@ -167,9 +190,12 @@ async function eliminarUsuarioConPagos(usuarioId) {
     await deleteDoc(doc(db, "usuarios", usuarioId));
 
     await init();
+    
+    // Mostrar mensaje de éxito (opcional)
+    mostrarMensaje("mensajeNuevoUsuario", `✓ Usuario ${nombreCompleto} eliminado correctamente.`, "exito");
   } catch (err) {
     console.error("Error eliminando usuario:", err);
-    alert("No se pudo eliminar el usuario. Revisa la consola y las reglas de Firestore.");
+    mostrarMensaje("mensajeNuevoUsuario", "✗ No se pudo eliminar el usuario. Revisa la consola y las reglas de Firestore.", "error");
   }
 }
 
@@ -253,21 +279,26 @@ function actualizarDashboard(usuarios) {
   hoy.setHours(0, 0, 0, 0);
   const en7Dias = addDays(hoy, 7);
 
-  const activos = usuarios.filter((u) => (u.estadoMembresia || "").toLowerCase() === "activa");
-  const vencidas = usuarios.filter((u) => (u.estadoMembresia || "").toLowerCase() === "vencida");
-
-  const conFin = activos.filter((u) => u.fechaFinMembresia);
-  const proximosVencer = conFin.filter((u) => {
-    const fin = u.fechaFinMembresia?.toDate?.() || new Date(0);
-    return fin >= hoy && fin <= en7Dias;
+  // Calcular membresías activas: aquellas cuya fecha de fin es hoy o después
+  const activos = usuarios.filter((u) => {
+    const fin = u.fechaFinMembresia?.toDate?.();
+    return fin && fin >= hoy;
   });
+
+  // Calcular membresías vencidas: aquellas cuya fecha de fin ya pasó
   const vencidosList = usuarios.filter((u) => {
     const fin = u.fechaFinMembresia?.toDate?.();
     return fin && fin < hoy;
   });
 
+  // Próximos a vencer en los siguientes 7 días
+  const proximosVencer = activos.filter((u) => {
+    const fin = u.fechaFinMembresia?.toDate?.() || new Date(0);
+    return fin >= hoy && fin <= en7Dias;
+  });
+
   document.getElementById("countActivos").textContent = activos.length;
-  document.getElementById("countVencidas").textContent = vencidas.length;
+  document.getElementById("countVencidas").textContent = vencidosList.length;
 
   const listProximos = document.getElementById("listaProximosVencer");
   const listVencidos = document.getElementById("listaVencidos");
@@ -300,7 +331,7 @@ function actualizarDashboard(usuarios) {
             const msg = `Hola ${(u.nombre || "").trim()}, tu membresía de Fuerza Delta venció el ${finStr}. Pásate a renovar cuando puedas.`;
             const wa = urlWhatsApp(u.telefono, msg);
             const linkWa = wa ? ` <a href="${wa}" target="_blank" rel="noopener" class="link-whatsapp" title="Abrir WhatsApp">WhatsApp</a>` : "";
-            return `<li><strong>${u.nombre} ${u.apellido}</strong> — Venció ${finStr}${linkWa}</li>`;
+            return `<li><strong>${u.nombre} ${u.apellido}</strong> — Venció ${finStr}${linkWa} <button type="button" class="btn btn--renovar btn--small" data-user-id="${u.id}">Renovar</button></li>`;
           }
         )
         .join("");
@@ -316,10 +347,50 @@ nuevoUsuarioPlanId.addEventListener("change", () => {
 
 document.getElementById("nuevoUsuarioFechaPago").value = new Date().toISOString().slice(0, 10);
 
+// Validación del campo de teléfono: solo números
+const campoTelefono = document.getElementById("telefono");
+campoTelefono.addEventListener("input", (e) => {
+  // Remover cualquier carácter que no sea número
+  e.target.value = e.target.value.replace(/\D/g, "");
+});
+
+campoTelefono.addEventListener("keypress", (e) => {
+  // Prevenir la entrada de caracteres no numéricos
+  if (!/[0-9]/.test(e.key) && e.key !== "Backspace" && e.key !== "Delete" && e.key !== "ArrowLeft" && e.key !== "ArrowRight" && e.key !== "Tab") {
+    e.preventDefault();
+  }
+});
+
+// Función para limpiar el formulario de nuevo usuario
+function limpiarFormularioNuevoUsuario() {
+  document.getElementById("formUsuario").reset();
+  document.getElementById("nuevoUsuarioFechaPago").value = new Date().toISOString().slice(0, 10);
+  document.getElementById("mensajeNuevoUsuario").textContent = "";
+  document.getElementById("mensajeNuevoUsuario").className = "mensaje-resultado";
+}
+
+// Botón para limpiar campos
+document.getElementById("btnLimpiarNuevoUsuario").addEventListener("click", limpiarFormularioNuevoUsuario);
+
+// Función para mostrar mensaje
+function mostrarMensaje(elementId, mensaje, tipo) {
+  const el = document.getElementById(elementId);
+  el.textContent = mensaje;
+  el.className = `mensaje-resultado mensaje-resultado--${tipo}`;
+  setTimeout(() => {
+    el.textContent = "";
+    el.className = "mensaje-resultado";
+  }, 5000);
+}
+
 document.getElementById("formUsuario").addEventListener("submit", async (e) => {
   e.preventDefault();
   const btn = e.target.querySelector('button[type="submit"]');
+  const mensajeEl = document.getElementById("mensajeNuevoUsuario");
   btn.disabled = true;
+  mensajeEl.textContent = "";
+  mensajeEl.className = "mensaje-resultado";
+  
   try {
     const nombre = document.getElementById("nombre").value.trim();
     const apellido = document.getElementById("apellido").value.trim();
@@ -332,7 +403,13 @@ document.getElementById("formUsuario").addEventListener("submit", async (e) => {
     const metodoPago = document.getElementById("nuevoUsuarioMetodoPago").value;
     const fechaPagoStr = document.getElementById("nuevoUsuarioFechaPago").value;
     const fechaPago = new Date(fechaPagoStr + "T12:00:00");
-    const fechaFin = addDays(fechaPago, duracionDias);
+    // El día de pago cuenta como día 1: fin = pago + (duración - 1) días
+    const fechaFin = addDays(fechaPago, duracionDias - 1);
+
+    // Determinar el estado de la membresía basándose en la fecha de fin
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+    const estadoMembresia = fechaFin >= hoy ? "activa" : "vencida";
 
     const userRef = await addDoc(collection(db, "usuarios"), {
       nombre,
@@ -340,7 +417,7 @@ document.getElementById("formUsuario").addEventListener("submit", async (e) => {
       telefono,
       email: email || null,
       fechaRegistro: Timestamp.now(),
-      estadoMembresia: "activa",
+      estadoMembresia,
       membresiaActual: planId,
       fechaInicioMembresia: Timestamp.fromDate(fechaPago),
       fechaFinMembresia: Timestamp.fromDate(fechaFin),
@@ -356,13 +433,18 @@ document.getElementById("formUsuario").addEventListener("submit", async (e) => {
       fechaFin: Timestamp.fromDate(fechaFin),
     });
 
+    mostrarMensaje("mensajeNuevoUsuario", `✓ Usuario ${nombre} ${apellido} guardado correctamente.`, "exito");
     e.target.reset();
     document.getElementById("nuevoUsuarioFechaPago").value = new Date().toISOString().slice(0, 10);
     await init();
-    showSection("inicio");
+    
+    // Redirigir al inicio después de 2 segundos
+    setTimeout(() => {
+      showSection("inicio");
+    }, 2000);
   } catch (err) {
     console.error(err);
-    alert("Error al guardar. Revisa la consola y la configuración de Firebase.");
+    mostrarMensaje("mensajeNuevoUsuario", "✗ Error al guardar el usuario. Revisa la consola y la configuración de Firebase.", "error");
   } finally {
     btn.disabled = false;
   }
@@ -394,7 +476,13 @@ document.getElementById("formPago").addEventListener("submit", async (e) => {
     const metodoPago = document.getElementById("metodoPago").value;
     const fechaPagoStr = document.getElementById("fechaPago").value;
     const fechaPago = new Date(fechaPagoStr + "T12:00:00");
-    const fechaFin = addDays(fechaPago, duracionDias);
+    // El día de pago cuenta como día 1: fin = pago + (duración - 1) días
+    const fechaFin = addDays(fechaPago, duracionDias - 1);
+
+    // Determinar el estado de la membresía basándose en la fecha de fin
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+    const estadoMembresia = fechaFin >= hoy ? "activa" : "vencida";
 
     await addDoc(collection(db, "pagos"), {
       usuarioId,
@@ -410,7 +498,7 @@ document.getElementById("formPago").addEventListener("submit", async (e) => {
       membresiaActual: planId,
       fechaInicioMembresia: Timestamp.fromDate(fechaPago),
       fechaFinMembresia: Timestamp.fromDate(fechaFin),
-      estadoMembresia: "activa",
+      estadoMembresia,
     });
 
     e.target.reset();
@@ -447,137 +535,18 @@ document.querySelector('.nav-link[href="#registrar-pago"]').addEventListener("cl
   }
 });
 
-// --- Importar usuarios (carga masiva desde CSV) ---
-const PLANTILLA_CSV = "nombre;apellido;telefono;email;fechaRegistro;plan\nJuan;Pérez;3001234567;juan@ejemplo.com;01/02/2026;mensual_basic\nMaría;García;3109876543;;05/01/2026;bimestre_basic";
-
-function parseFecha(str) {
-  if (!str || typeof str !== "string") return null;
-  const s = str.trim();
-  if (!s) return null;
-  const parts = s.split(/[\/\-.]/).map((n) => parseInt(n, 10));
-  if (parts.length < 3) return null;
-  const [a, b, c] = parts;
-  if (s.match(/^\d{4}-\d{1,2}-\d{1,2}/)) return new Date(a, b - 1, c);
-  if (c > 31) return new Date(c, b - 1, a);
-  return new Date(c, b - 1, a);
-}
-
-function parseCSV(texto) {
-  const lineas = texto.split(/\r?\n/).filter((l) => l.trim());
-  if (lineas.length < 2) return [];
-  const sep = lineas[0].includes(";") ? ";" : ",";
-  const headers = lineas[0].split(sep).map((h) => h.trim().toLowerCase().replace(/^["']|["']$/g, ""));
-  const filas = [];
-  for (let i = 1; i < lineas.length; i++) {
-    const valores = [];
-    let rest = lineas[i];
-    while (rest.length) {
-      if (rest.startsWith('"')) {
-        const end = rest.indexOf('"', 1);
-        valores.push(end === -1 ? rest.slice(1) : rest.slice(1, end));
-        rest = end === -1 ? "" : rest.slice(end + 1).replace(/^[\s,;]/, "");
-      } else {
-        const idx = rest.search(new RegExp(`[${sep}]`));
-        valores.push(idx === -1 ? rest.trim() : rest.slice(0, idx).trim());
-        rest = idx === -1 ? "" : rest.slice(idx + 1);
-      }
-    }
-    const obj = {};
-    headers.forEach((h, j) => (obj[h] = (valores[j] || "").trim()));
-    if (obj.nombre || obj.apellido || obj.telefono) filas.push(obj);
-  }
-  return filas;
-}
-
-document.getElementById("descargarPlantilla").addEventListener("click", (e) => {
-  e.preventDefault();
-  const blob = new Blob(["\uFEFF" + PLANTILLA_CSV], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "plantilla_usuarios.csv";
-  a.click();
-  URL.revokeObjectURL(url);
-});
-
-let archivoCsvSeleccionado = null;
-document.getElementById("archivoCsv").addEventListener("change", (e) => {
-  archivoCsvSeleccionado = e.target.files[0] || null;
-  document.getElementById("btnImportar").disabled = !archivoCsvSeleccionado;
-  document.getElementById("resultadoImportacion").textContent = "";
-});
-
-document.getElementById("btnImportar").addEventListener("click", async () => {
-  if (!archivoCsvSeleccionado) return;
-  const btn = document.getElementById("btnImportar");
-  const resultado = document.getElementById("resultadoImportacion");
-  btn.disabled = true;
-  resultado.textContent = "Importando...";
-  try {
-    const texto = await archivoCsvSeleccionado.text();
-    const filas = parseCSV(texto);
-    if (filas.length === 0) {
-      resultado.textContent = "No se encontraron filas válidas (nombre, apellido o teléfono). Revisa el CSV.";
-      btn.disabled = false;
-      return;
-    }
-    const colRef = collection(db, "usuarios");
-    const BATCH_SIZE = 500;
-    let importados = 0;
-    const hoy = new Date();
-    hoy.setHours(0, 0, 0, 0);
-    for (let i = 0; i < filas.length; i += BATCH_SIZE) {
-      const batch = writeBatch(db);
-      const chunk = filas.slice(i, i + BATCH_SIZE);
-      for (const row of chunk) {
-        const fechaRegistroDate = parseFecha(row.fecharegistro || row.fecha_registro) || new Date();
-        const planIdRaw = (row.plan || row.tipomembresia || row.membresia || "").trim();
-        const planEncontrado = planIdRaw
-          ? planes.find(
-              (p) =>
-                p.id === planIdRaw ||
-                (p.nombre || "").toLowerCase() === planIdRaw.toLowerCase()
-            )
-          : null;
-        const datos = {
-          nombre: (row.nombre || "").trim(),
-          apellido: (row.apellido || "").trim(),
-          telefono: (row.telefono || "").trim(),
-          email: (row.email || "").trim() || null,
-          fechaRegistro: Timestamp.fromDate(fechaRegistroDate),
-          estadoMembresia: "vencida",
-        };
-        if (planEncontrado) {
-          const duracionDias = planEncontrado.duracionDias || 30;
-          const fechaFin = new Date(fechaRegistroDate);
-          fechaFin.setDate(fechaFin.getDate() + duracionDias);
-          datos.membresiaActual = planEncontrado.id;
-          datos.fechaInicioMembresia = Timestamp.fromDate(fechaRegistroDate);
-          datos.fechaFinMembresia = Timestamp.fromDate(fechaFin);
-          datos.estadoMembresia = fechaFin >= hoy ? "activa" : "vencida";
-        }
-        const ref = doc(colRef);
-        batch.set(ref, datos);
-        importados++;
-      }
-      await batch.commit();
-    }
-    resultado.textContent = `Se importaron ${importados} usuarios. Puedes ir a Usuarios para verlos y renovar cuando paguen.`;
-    document.getElementById("archivoCsv").value = "";
-    archivoCsvSeleccionado = null;
-    btn.disabled = true;
-    await init();
-  } catch (err) {
-    console.error(err);
-    resultado.textContent = "Error al importar. Revisa que el CSV tenga columnas nombre, apellido, telefono, email.";
-  } finally {
-    btn.disabled = false;
-  }
-});
-
 // Búsqueda de usuarios
 document.getElementById("buscarUsuario").addEventListener("input", (e) => {
   renderUsuarios(window.__usuarios || [], e.target.value);
+});
+
+// Botones de renovar en la lista de usuarios vencidos del inicio
+document.getElementById("listaVencidos").addEventListener("click", (e) => {
+  const btnRenovar = e.target.closest(".btn--renovar");
+  if (btnRenovar) {
+    const userId = btnRenovar.dataset.userId;
+    if (userId) irARenovarUsuario(userId);
+  }
 });
 
 // Botones en la lista de usuarios: Renovar / Eliminar
@@ -616,5 +585,8 @@ async function init() {
       "<li class='empty'>" + msg + "</li>";
   }
 }
+
+// Inicializar módulo de importación de usuarios
+inicializarImportacion(db, () => planes, init);
 
 init();
