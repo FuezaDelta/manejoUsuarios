@@ -1,7 +1,17 @@
-# Opcional: si usas un archivo de config local con claves reales, no lo subas
-# js/firebase-config.local.js
+# Dependencias y herramientas
+node_modules/
+coverage/
 
+# Configuración local que no debe subirse (si alguna vez se usa un proyecto de pruebas)
+js/firebase/config.local.js
+
+# Sistema operativo y editores
 .DS_Store
 Thumbs.db
 *.log
-node_modules/
+.vscode/
+.idea/
+
+# Nota: js/firebase/config.js sí se versiona. Los valores del SDK web de Firebase
+# son públicos por diseño (el navegador los expone) y ocultarlos no protege nada;
+# la seguridad de los datos depende de firestore.rules.

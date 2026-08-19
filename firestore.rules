@@ -1,0 +1,164 @@
+rules_version = '2';
+
+// Reglas de seguridad de Firestore para la app de Fuerza Delta.
+//
+// ─────────────────────────────────────────────────────────────────────────────
+// IMPORTANTE — estado actual
+//
+// La app todavía no tiene inicio de sesión, así que `modoAbierto()` devuelve
+// true y cualquiera que conozca el projectId puede leer y escribir los datos de
+// los socios. Es un riesgo real y consciente, no un descuido.
+//
+// Para cerrarlo, cuando se añada autenticación:
+//   1. Firebase Console → Authentication → habilitar un proveedor.
+//   2. Crear el usuario o usuarios que administrarán el gimnasio.
+//   3. Cambiar `modoAbierto()` a false aquí abajo y desplegar estas reglas
+//      (Firebase Console → Firestore → Reglas, o
+//      `firebase deploy --only firestore:rules`).
+//
+// Mientras tanto, estas reglas ya aportan tres cosas que las anteriores no:
+//   · Se valida la forma de cada documento, así que nadie puede inyectar campos
+//     inesperados ni textos gigantes en la base.
+//   · Los planes se pueden crear y editar desde la app, pero no borrar: los
+//     socios guardan el id del plan y un borrado dejaría membresías huérfanas.
+//   · Cualquier colección no declarada queda denegada.
+//
+// Las actualizaciones se validan por los campos que cambian
+// (`diff().affectedKeys()`), no por el documento resultante. Firestore evalúa en
+// `request.resource.data` el documento completo tras el cambio, así que una
+// comprobación de tipo `hasOnly` sobre él impediría renovarle la membresía a un
+// socio antiguo que tuviera cualquier campo que la app ya no escribe.
+// ─────────────────────────────────────────────────────────────────────────────
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function modoAbierto() {
+      return true;
+    }
+
+    function autorizado() {
+      return modoAbierto() || request.auth != null;
+    }
+
+    function textoOpcional(datos, campo, maxLongitud) {
+      return !(campo in datos)
+        || datos[campo] == null
+        || (datos[campo] is string && datos[campo].size() <= maxLongitud);
+    }
+
+    function fechaOpcional(datos, campo) {
+      return !(campo in datos) || datos[campo] is timestamp;
+    }
+
+    function conContenido(valor, maxLongitud) {
+      return valor is string && valor.size() > 0 && valor.size() <= maxLongitud;
+    }
+
+    // Al crear se exige exactamente lo que escribe la app: ni un campo más.
+    function usuarioNuevoValido() {
+      let d = request.resource.data;
+      return d.keys().hasOnly([
+              'nombre', 'apellido', 'telefono', 'email', 'fechaRegistro',
+              'membresiaActual', 'fechaInicioMembresia', 'fechaFinMembresia'
+            ])
+        && conContenido(d.nombre, 80)
+        && conContenido(d.apellido, 80)
+        && conContenido(d.telefono, 20)
+        && d.fechaRegistro is timestamp
+        && textoOpcional(d, 'email', 120)
+        && textoOpcional(d, 'membresiaActual', 60)
+        && fechaOpcional(d, 'fechaInicioMembresia')
+        && fechaOpcional(d, 'fechaFinMembresia');
+    }
+
+    // La app solo modifica la membresía de un usuario, nunca sus datos
+    // personales. Restringir los campos que cambian, en lugar del documento
+    // resultante, es más estricto y además no depende de lo que ya hubiera
+    // guardado en los documentos antiguos.
+    function renovacionValida() {
+      let d = request.resource.data;
+      return d.diff(resource.data).affectedKeys().hasOnly([
+              'membresiaActual', 'fechaInicioMembresia', 'fechaFinMembresia'
+            ])
+        && conContenido(d.membresiaActual, 60)
+        && d.fechaInicioMembresia is timestamp
+        && d.fechaFinMembresia is timestamp;
+    }
+
+    function pagoValido() {
+      let d = request.resource.data;
+      return d.keys().hasOnly([
+              'usuarioId', 'planId', 'montoPagado', 'metodoPago',
+              'fechaPago', 'fechaInicio', 'fechaFin', 'origen', 'creadoEn'
+            ])
+        && conContenido(d.usuarioId, 60)
+        && conContenido(d.planId, 60)
+        && d.montoPagado is number
+        && d.montoPagado >= 0
+        && d.montoPagado <= 100000000
+        && textoOpcional(d, 'metodoPago', 40)
+        && textoOpcional(d, 'origen', 20)
+        && d.fechaPago is timestamp
+        && d.fechaInicio is timestamp
+        && d.fechaFin is timestamp
+        && fechaOpcional(d, 'creadoEn');
+    }
+
+    function planValido() {
+      let d = request.resource.data;
+      return conContenido(d.nombre, 60)
+        && d.precio is number
+        && d.precio >= 0
+        && d.precio <= 100000000
+        && d.duracionDias is number
+        && d.duracionDias >= 1
+        && d.duracionDias <= 3650
+        && d.activo is bool;
+    }
+
+    function planNuevoValido() {
+      return request.resource.data.keys().hasOnly([
+              'nombre', 'precio', 'duracionDias', 'activo'
+            ])
+        && planValido();
+    }
+
+    // Los documentos antiguos pueden traer campos como `tipo`. Solo se
+    // comprueba lo que cambia, para no rechazar una edición por eso.
+    function planActualizacionValida() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+              'nombre', 'precio', 'duracionDias', 'activo'
+            ])
+        && planValido();
+    }
+
+    match /planes/{planId} {
+      allow read: if autorizado();
+      allow create: if autorizado() && planNuevoValido();
+      allow update: if autorizado() && planActualizacionValida();
+      allow delete: if false;
+    }
+
+    match /usuarios/{usuarioId} {
+      allow read: if autorizado();
+      allow create: if autorizado() && usuarioNuevoValido();
+      allow update: if autorizado() && renovacionValida();
+      allow delete: if autorizado();
+    }
+
+    // Los pagos son un registro histórico: se crean y, en el borrado en cascada
+    // de un usuario, se eliminan. Nunca se modifican.
+    match /pagos/{pagoId} {
+      allow read: if autorizado();
+      allow create: if autorizado() && pagoValido();
+      allow update: if false;
+      allow delete: if autorizado();
+    }
+
+    // Cualquier otra colección queda cerrada.
+    match /{documento=**} {
+      allow read, write: if false;
+    }
+  }
+}
