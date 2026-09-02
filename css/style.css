@@ -146,7 +146,7 @@ body {
 .main {
   padding: 1rem;
   padding-bottom: 2rem;
-  max-width: 900px;
+  max-width: 1100px;
   margin: 0 auto;
 }
 
@@ -217,6 +217,303 @@ body {
   background: var(--bg-card);
   border-radius: var(--radius);
   border: 1px solid var(--border);
+}
+
+.block-encabezado {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.block-encabezado h3 {
+  margin: 0;
+}
+
+.tabla-orden {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.input--orden {
+  width: auto;
+  min-width: 12.75rem;
+  padding: 0.4rem 2rem 0.4rem 0.7rem;
+  font-size: 0.8rem;
+  background-position: right 0.6rem center;
+}
+
+/* Tablas del inicio: rejilla con todos los bordes, como en Excel. */
+.tabla {
+  --tabla-borde: rgba(232, 228, 220, 0.22);
+  width: 100%;
+  border-collapse: collapse;
+  border: 1px solid var(--tabla-borde);
+}
+
+.tabla th,
+.tabla td {
+  padding: 0.65rem 0.75rem;
+  vertical-align: middle;
+  border: 1px solid var(--tabla-borde);
+}
+
+.tabla td {
+  text-align: left;
+}
+
+.tabla th {
+  text-align: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  background: rgba(232, 228, 220, 0.05);
+}
+
+.tabla__ordenar {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  text-align: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.tabla__ordenar:hover,
+.tabla__ordenar:focus-visible {
+  color: var(--cream);
+}
+
+.tabla__ordenar:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.tabla th[aria-sort="ascending"] .tabla__orden-marca::after {
+  content: "▲";
+  font-size: 0.65em;
+  color: var(--olive);
+}
+
+.tabla th[aria-sort="descending"] .tabla__orden-marca::after {
+  content: "▼";
+  font-size: 0.65em;
+  color: var(--olive);
+}
+
+.tabla__nombre {
+  font-weight: 600;
+}
+
+.tabla__fecha,
+.tabla__acciones,
+.tabla__whatsapp,
+.tabla__renovar,
+.tabla__eliminar,
+.tabla__telefono,
+.tabla__estado,
+.tabla__precio,
+.tabla__duracion,
+.tabla__editar {
+  width: 1%;
+  white-space: nowrap;
+}
+
+.tabla__precio {
+  color: var(--olive);
+  font-weight: 600;
+}
+
+.tabla td.tabla__editar {
+  text-align: center;
+}
+
+.tabla__acciones-grupo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.tabla__renovar .btn--small,
+.tabla__eliminar .btn--small,
+.tabla__acciones .btn--small {
+  margin-left: 0;
+}
+
+.tabla__vacio {
+  text-align: center;
+  color: var(--text-muted);
+  padding: 1.5rem 0.75rem;
+}
+
+.tabla-wrap {
+  overflow-x: auto;
+}
+
+@media (min-width: 640px) {
+  .tabla--usuarios {
+    min-width: 52rem;
+  }
+}
+
+/* En celular la fila se apila: nombre arriba, fecha y acciones abajo. */
+@media (max-width: 639px) {
+  .tabla {
+    border: none;
+  }
+
+  .tabla thead {
+    display: none;
+  }
+
+  .tabla tbody {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .tabla tr {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      "nombre nombre"
+      "fecha acciones";
+    gap: 0;
+    padding: 0;
+    border: 1px solid var(--tabla-borde);
+  }
+
+  .tabla th,
+  .tabla td {
+    display: block;
+    width: auto;
+    padding: 0.6rem 0.75rem;
+    white-space: normal;
+    border: none;
+  }
+
+  .tabla__nombre {
+    grid-area: nombre;
+    border-bottom: 1px solid var(--tabla-borde);
+  }
+
+  .tabla__fecha {
+    grid-area: fecha;
+    color: var(--text-muted);
+    font-size: 0.875rem;
+  }
+
+  .tabla__acciones {
+    grid-area: acciones;
+    width: auto;
+    border-left: 1px solid var(--tabla-borde);
+  }
+
+  .tabla--vencidos tr {
+    grid-template-columns: 1fr auto auto;
+    grid-template-areas:
+      "nombre nombre nombre"
+      "fecha whatsapp renovar";
+  }
+
+  .tabla--vencidos .tabla__whatsapp {
+    grid-area: whatsapp;
+    border-left: 1px solid var(--tabla-borde);
+  }
+
+  .tabla--vencidos .tabla__renovar {
+    grid-area: renovar;
+    border-left: 1px solid var(--tabla-borde);
+  }
+
+  .tabla--usuarios tr {
+    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-areas:
+      "nombre nombre nombre"
+      "tel fecha estado"
+      "whatsapp renovar eliminar";
+  }
+
+  .tabla--usuarios .tabla__telefono {
+    grid-area: tel;
+  }
+
+  .tabla--usuarios .tabla__fecha {
+    grid-area: fecha;
+    border-left: 1px solid var(--tabla-borde);
+  }
+
+  .tabla--usuarios .tabla__estado {
+    grid-area: estado;
+    border-left: 1px solid var(--tabla-borde);
+  }
+
+  .tabla--usuarios .tabla__whatsapp {
+    grid-area: whatsapp;
+    border-top: 1px solid var(--tabla-borde);
+  }
+
+  .tabla--usuarios .tabla__renovar {
+    grid-area: renovar;
+    border-top: 1px solid var(--tabla-borde);
+    border-left: 1px solid var(--tabla-borde);
+  }
+
+  .tabla--usuarios .tabla__eliminar {
+    grid-area: eliminar;
+    border-top: 1px solid var(--tabla-borde);
+    border-left: 1px solid var(--tabla-borde);
+  }
+
+  .tabla--planes tr {
+    grid-template-columns: 1fr 1fr auto;
+    grid-template-areas:
+      "nombre nombre nombre"
+      "precio duracion editar";
+  }
+
+  .tabla--planes .tabla__precio {
+    grid-area: precio;
+  }
+
+  .tabla--planes .tabla__duracion {
+    grid-area: duracion;
+    border-left: 1px solid var(--tabla-borde);
+    color: var(--text-muted);
+  }
+
+  .tabla--planes .tabla__editar {
+    grid-area: editar;
+    border-left: 1px solid var(--tabla-borde);
+  }
+
+  .tabla tr:has(.tabla__vacio) {
+    display: block;
+  }
+
+  .tabla__vacio {
+    grid-column: 1 / -1;
+    border: none;
+    padding: 1.25rem 0.75rem;
+  }
 }
 
 /* Lists */
@@ -335,6 +632,31 @@ body {
   background: rgba(201, 74, 74, 0.3);
 }
 
+.tabla td.tabla__whatsapp,
+.tabla td.tabla__estado {
+  text-align: center;
+}
+
+.icono-estado {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.icono-estado__svg {
+  width: 1.45rem;
+  height: 1.45rem;
+  display: block;
+}
+
+.icono-estado--activa {
+  color: #4caf50;
+}
+
+.icono-estado--vencida {
+  color: var(--danger);
+}
+
 .link-whatsapp,
 .btn--whatsapp {
   color: #25d366;
@@ -343,9 +665,28 @@ body {
   font-weight: 600;
 }
 
+.link-whatsapp {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.icono-whatsapp {
+  width: 1.45rem;
+  height: 1.45rem;
+  display: block;
+}
+
 .link-whatsapp:hover,
 .btn--whatsapp:hover {
-  text-decoration: underline;
+  color: #45e07a;
+  text-decoration: none;
+}
+
+.link-whatsapp:focus-visible {
+  outline: 2px solid #25d366;
+  outline-offset: 3px;
+  border-radius: 4px;
 }
 
 .btn--whatsapp {
@@ -393,14 +734,91 @@ body {
   color: var(--cream);
 }
 
-.form-plan {
-  margin-top: 1.5rem;
+.tabla-encabezado {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 0.5rem;
 }
 
-.form-plan h3 {
-  margin: 0 0 0.25rem;
-  font-size: 1.05rem;
-  font-weight: 600;
+.btn-agregar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--olive);
+  cursor: pointer;
+}
+
+.btn-agregar:hover,
+.btn-agregar:focus-visible {
+  color: var(--accent-hover);
+}
+
+.btn-agregar:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.btn-agregar__icono {
+  width: 28px;
+  height: 28px;
+  display: block;
+}
+
+.btn-icono {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--olive);
+  cursor: pointer;
+}
+
+.btn-icono--editar:hover,
+.btn-icono--editar:focus-visible {
+  background: rgba(109, 124, 61, 0.2);
+  color: var(--cream);
+}
+
+.btn-icono:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.btn-icono__svg {
+  width: 1.2rem;
+  height: 1.2rem;
+  display: block;
+}
+
+.form-plan {
+  margin: 0;
+  max-width: none;
+  gap: 0;
+}
+
+.form-plan .modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.form-plan .modal-body .mensaje-resultado {
+  margin-bottom: 0;
+}
+
+.modal-footer .btn--secondary {
+  margin-top: 0;
 }
 
 /* Forms */
@@ -415,6 +833,11 @@ body {
   flex-direction: column;
   gap: 0.75rem;
   max-width: 400px;
+}
+
+.form.form-plan {
+  max-width: none;
+  gap: 0;
 }
 
 /* Formulario en dos columnas (web): cada .form-field = una celda */
@@ -570,10 +993,15 @@ select.input {
 }
 
 .toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
   margin-bottom: 1rem;
 }
 
-.toolbar .input {
+.toolbar .input:not(.input--orden) {
+  flex: 1 1 14rem;
   max-width: 100%;
 }
 

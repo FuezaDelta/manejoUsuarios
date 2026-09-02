@@ -15,6 +15,12 @@ export const ETIQUETA_ESTADO = {
   [ESTADO.VENCIDA]: "Vencida",
 };
 
+export const FILTRO_ESTADO = {
+  TODAS: "todas",
+  ACTIVA: ESTADO.ACTIVA,
+  VENCIDA: ESTADO.VENCIDA,
+};
+
 /** Ventana de aviso del panel de inicio. */
 export const DIAS_AVISO_VENCIMIENTO = 7;
 
@@ -63,6 +69,12 @@ export function estadoMembresia(fechaFin, hoy = hoyLocal()) {
 
 export function estaActiva(fechaFin, hoy = hoyLocal()) {
   return estadoMembresia(fechaFin, hoy) === ESTADO.ACTIVA;
+}
+
+/** Filtra por Activa / Vencida. "todas" (o vacío) deja la lista intacta. */
+export function filtrarPorEstado(usuarios, filtro, hoy = hoyLocal()) {
+  if (!filtro || filtro === FILTRO_ESTADO.TODAS) return usuarios;
+  return usuarios.filter((usuario) => estadoMembresia(usuario.fechaFinMembresia, hoy) === filtro);
 }
 
 /** Incluye el último día de la ventana: con 7 días, una membresía que vence en 7 cuenta. */

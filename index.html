@@ -41,12 +41,69 @@
         </div>
       </div>
       <div class="block">
-        <h3>Próximos a vencer (7 días)</h3>
-        <ul class="list" id="listaProximosVencer"></ul>
+        <div class="block-encabezado">
+          <h3 id="tituloProximosVencer">Próximos a vencer (7 días)</h3>
+          <label class="tabla-orden">
+            Ordenar
+            <select id="ordenProximosVencer" class="input input--orden">
+              <option value="fecha-proxima">Fecha más próxima</option>
+              <option value="fecha-lejana">Fecha más lejana</option>
+              <option value="nombre-az">Nombre A-Z</option>
+              <option value="nombre-za">Nombre Z-A</option>
+            </select>
+          </label>
+        </div>
+        <table class="tabla" aria-labelledby="tituloProximosVencer">
+          <thead>
+            <tr>
+              <th scope="col" data-col="nombre">
+                <button type="button" class="tabla__ordenar" data-col="nombre">
+                  Nombre <span class="tabla__orden-marca" aria-hidden="true"></span>
+                </button>
+              </th>
+              <th scope="col" data-col="fecha">
+                <button type="button" class="tabla__ordenar" data-col="fecha">
+                  Vence <span class="tabla__orden-marca" aria-hidden="true"></span>
+                </button>
+              </th>
+              <th scope="col">Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="listaProximosVencer"></tbody>
+        </table>
       </div>
       <div class="block">
-        <h3>Usuarios vencidos</h3>
-        <ul class="list" id="listaVencidos"></ul>
+        <div class="block-encabezado">
+          <h3 id="tituloVencidos">Usuarios vencidos</h3>
+          <label class="tabla-orden">
+            Ordenar
+            <select id="ordenVencidos" class="input input--orden">
+              <option value="fecha-proxima">Fecha más próxima</option>
+              <option value="fecha-lejana">Fecha más lejana</option>
+              <option value="nombre-az">Nombre A-Z</option>
+              <option value="nombre-za">Nombre Z-A</option>
+            </select>
+          </label>
+        </div>
+        <table class="tabla tabla--vencidos" aria-labelledby="tituloVencidos">
+          <thead>
+            <tr>
+              <th scope="col" data-col="nombre">
+                <button type="button" class="tabla__ordenar" data-col="nombre">
+                  Nombre <span class="tabla__orden-marca" aria-hidden="true"></span>
+                </button>
+              </th>
+              <th scope="col" data-col="fecha">
+                <button type="button" class="tabla__ordenar" data-col="fecha">
+                  Venció <span class="tabla__orden-marca" aria-hidden="true"></span>
+                </button>
+              </th>
+              <th scope="col">WhatsApp</th>
+              <th scope="col">Renovar</th>
+            </tr>
+          </thead>
+          <tbody id="listaVencidos"></tbody>
+        </table>
       </div>
     </section>
 
@@ -56,8 +113,48 @@
       <div id="mensajeUsuarios" class="mensaje-resultado" role="status" aria-live="polite"></div>
       <div class="toolbar">
         <input type="search" id="buscarUsuario" class="input" placeholder="Buscar por nombre, teléfono..." />
+        <label class="tabla-orden">
+          Estado
+          <select id="filtroEstadoUsuarios" class="input input--orden">
+            <option value="todas">Todas</option>
+            <option value="activa">Activas</option>
+            <option value="vencida">Vencidas</option>
+          </select>
+        </label>
+        <label class="tabla-orden">
+          Ordenar
+          <select id="ordenUsuarios" class="input input--orden">
+            <option value="nombre-az" selected>Nombre A-Z</option>
+            <option value="nombre-za">Nombre Z-A</option>
+            <option value="fecha-proxima">Fecha más próxima</option>
+            <option value="fecha-lejana">Fecha más lejana</option>
+          </select>
+        </label>
       </div>
-      <ul class="list list--usuarios" id="listaUsuarios"></ul>
+      <div class="tabla-wrap">
+        <table class="tabla tabla--usuarios" aria-label="Listado de usuarios">
+          <thead>
+            <tr>
+              <th scope="col" data-col="nombre">
+                <button type="button" class="tabla__ordenar" data-col="nombre">
+                  Nombre <span class="tabla__orden-marca" aria-hidden="true"></span>
+                </button>
+              </th>
+              <th scope="col">Teléfono</th>
+              <th scope="col" data-col="fecha">
+                <button type="button" class="tabla__ordenar" data-col="fecha">
+                  Vence <span class="tabla__orden-marca" aria-hidden="true"></span>
+                </button>
+              </th>
+              <th scope="col">Estado</th>
+              <th scope="col">WhatsApp</th>
+              <th scope="col">Renovar</th>
+              <th scope="col">Eliminar</th>
+            </tr>
+          </thead>
+          <tbody id="listaUsuarios"></tbody>
+        </table>
+      </div>
     </section>
 
     <!-- Sección Agregar usuario (incluye primer pago) -->
@@ -161,24 +258,53 @@
     <section id="planes" class="section">
       <h2>Planes</h2>
       <p class="form-hint">Edita un plan o agrega uno nuevo. Cambiar el precio o la duración no altera las membresías ya cobradas.</p>
-      <div id="mensajePlanes" class="mensaje-resultado" role="status" aria-live="polite"></div>
-      <ul class="list list--planes" id="listaPlanes"></ul>
-      <form id="formPlan" class="form form-plan">
-        <h3 id="tituloFormPlan">Nuevo plan</h3>
-        <input type="hidden" id="planId" />
-        <label class="label" for="planNombre">Nombre</label>
-        <input type="text" id="planNombre" class="input" maxlength="60" autocomplete="off" required />
-        <label class="label" for="planPrecio">Precio</label>
-        <input type="number" id="planPrecio" class="input" min="0" step="1" required />
-        <label class="label" for="planDuracion">Duración (días)</label>
-        <input type="number" id="planDuracion" class="input" min="1" step="1" required />
-        <div class="form-actions">
-          <button type="submit" class="btn btn--primary" id="btnGuardarPlan">Agregar plan</button>
-          <button type="button" id="btnLimpiarPlan" class="btn btn--secondary">Limpiar</button>
-        </div>
-      </form>
+      <div id="mensajePlanesPagina" class="mensaje-resultado" role="status" aria-live="polite"></div>
+      <div class="tabla-encabezado">
+        <button type="button" id="btnNuevoPlan" class="btn-agregar" aria-label="Agregar plan" title="Agregar plan">
+          <svg class="btn-agregar__icono" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path fill="currentColor" d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm5 11h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/>
+          </svg>
+        </button>
+      </div>
+      <table class="tabla tabla--planes" aria-label="Catálogo de planes">
+        <thead>
+          <tr>
+            <th scope="col">Nombre</th>
+            <th scope="col">Precio</th>
+            <th scope="col">Duración</th>
+            <th scope="col">Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="listaPlanes"></tbody>
+      </table>
     </section>
   </main>
+
+  <div id="modalPlan" class="modal-overlay" aria-hidden="true">
+    <div class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="tituloFormPlan">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 class="modal-title" id="tituloFormPlan">Nuevo plan</h3>
+        </div>
+        <form id="formPlan" class="form form-plan">
+          <div class="modal-body">
+            <div id="mensajePlanes" class="mensaje-resultado" role="status" aria-live="polite"></div>
+            <input type="hidden" id="planId" />
+            <label class="label" for="planNombre">Nombre</label>
+            <input type="text" id="planNombre" class="input" maxlength="60" autocomplete="off" required />
+            <label class="label" for="planPrecio">Precio</label>
+            <input type="number" id="planPrecio" class="input" min="0" step="1" required />
+            <label class="label" for="planDuracion">Duración (días)</label>
+            <input type="number" id="planDuracion" class="input" min="1" step="1" required />
+          </div>
+          <div class="modal-footer">
+            <button type="button" id="btnCancelarPlan" class="btn btn--secondary">Cancelar</button>
+            <button type="submit" class="btn btn--primary" id="btnGuardarPlan">Agregar plan</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
 
   <script type="module" src="js/main.js"></script>
 </body>

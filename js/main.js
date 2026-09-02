@@ -18,6 +18,18 @@ function mostrarFalloCritico(mensaje) {
     lista.replaceChildren(elemento);
   }
 
+  for (const cuerpo of document.querySelectorAll(".tabla tbody")) {
+    const tabla = cuerpo.closest("table");
+    const columnas = tabla?.querySelectorAll("thead th").length || 3;
+    const fila = document.createElement("tr");
+    const celda = document.createElement("td");
+    celda.className = "tabla__vacio";
+    celda.colSpan = columnas;
+    celda.textContent = mensaje;
+    fila.append(celda);
+    cuerpo.replaceChildren(fila);
+  }
+
   // Las secciones de formularios no tienen lista, así que el aviso va en sus
   // contenedores de mensaje. El enrutador permite abrir la app directamente en
   // cualquiera de ellas, y ninguna debe quedarse muda.
