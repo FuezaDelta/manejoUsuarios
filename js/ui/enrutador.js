@@ -9,12 +9,20 @@
  */
 const CLASE_ACTIVA = "active";
 
-export function crearEnrutador({ seccionPorDefecto, alNavegar }) {
+/**
+ * @param puedeVer (id) => boolean. Si devuelve false, se muestra la sección por
+ *                 defecto: así un enlace directo a `#planes` no abre esa sección
+ *                 a quien no tiene permiso.
+ */
+export function crearEnrutador({ seccionPorDefecto, alNavegar, puedeVer = () => true }) {
   const secciones = Array.from(document.querySelectorAll(".section"));
   const enlaces = Array.from(document.querySelectorAll(".nav-link"));
   const idsValidos = new Set(secciones.map((seccion) => seccion.id));
 
-  function mostrar(id) {
+  function mostrar(idPedido) {
+    const id = puedeVer(idPedido) ? idPedido : seccionPorDefecto;
+    if (id !== idPedido) window.history.replaceState(null, "", `#${id}`);
+
     for (const seccion of secciones) {
       const activa = seccion.id === id;
       seccion.classList.toggle(CLASE_ACTIVA, activa);
@@ -60,5 +68,7 @@ export function crearEnrutador({ seccionPorDefecto, alNavegar }) {
   return {
     navegar,
     iniciar: () => navegar(idDesdeUrl(), { reemplazar: true }),
+    /** Vuelve a evaluar la sección actual, p. ej. cuando cambian los permisos. */
+    refrescar: () => mostrar(idDesdeUrl()),
   };
 }

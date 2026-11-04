@@ -11,6 +11,12 @@ const MENSAJE_FALLO =
   "No se pudo iniciar la aplicación. Abre la consola del navegador (F12) para ver el detalle.";
 
 function mostrarFalloCritico(mensaje) {
+  // Mientras se comprueba la sesión solo se ve la pantalla de carga, así que el
+  // aviso tiene que aparecer también ahí.
+  const textoCarga = document.getElementById("appLoadingTexto");
+  if (textoCarga) textoCarga.textContent = mensaje;
+  document.querySelector(".app-loading__spinner")?.remove();
+
   for (const lista of document.querySelectorAll(".list")) {
     const elemento = document.createElement("li");
     elemento.className = "empty";

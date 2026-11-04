@@ -13,7 +13,7 @@ import { marcarColumnaOrden, siguienteOrden } from "../orden-tabla.js";
 import { contenidoDeTabla, enlaceWhatsApp } from "../plantillas.js";
 
 const RETARDO_BUSQUEDA_MS = 150;
-const COLUMNAS_USUARIOS = 7;
+const COLUMNAS_USUARIOS = 9;
 
 function iconoEstado(estado) {
   const etiqueta = ETIQUETA_ESTADO[estado];
@@ -31,7 +31,19 @@ function iconoEstado(estado) {
   </span>`;
 }
 
-function filaUsuario(usuario) {
+/**
+ * Plan de la membresía actual. Si el plan ya no está en el catálogo (se borró
+ * o se desactivó), se muestra su id para no perder el dato.
+ */
+function celdaPlan(usuario, planesPorId) {
+  if (!usuario.membresiaActual) return html`<span class="tabla__sin-dato">—</span>`;
+  const plan = planesPorId.get(usuario.membresiaActual);
+  const nombre = plan?.nombre ?? usuario.membresiaActual;
+  const detalle = plan ? `${plan.duracionDias} días` : "Plan fuera del catálogo";
+  return html`<span class="etiqueta etiqueta--plan" title="${detalle}">${nombre}</span>`;
+}
+
+function filaUsuario(usuario, planesPorId) {
   const estado = estadoMembresia(usuario.fechaFinMembresia);
   const vencimiento = formatearFecha(usuario.fechaFinMembresia);
   const mensaje = `Hola ${usuario.nombre}, te contacto desde Fuerza Delta.`;
@@ -39,6 +51,8 @@ function filaUsuario(usuario) {
   return html`<tr>
     <td class="tabla__nombre">${usuario.nombreCompleto}</td>
     <td class="tabla__telefono">${usuario.telefono}</td>
+    <td class="tabla__plan">${celdaPlan(usuario, planesPorId)}</td>
+    <td class="tabla__pago">${formatearFecha(usuario.fechaInicioMembresia)}</td>
     <td class="tabla__fecha">${vencimiento}</td>
     <td class="tabla__estado">${iconoEstado(estado)}</td>
     <td class="tabla__whatsapp">${enlaceWhatsApp({ telefono: usuario.telefono, mensaje })}</td>
@@ -60,6 +74,7 @@ export function crearVistaUsuarios({ almacen, irARenovar }) {
   const notificador = crearNotificador("mensajeUsuarios");
   const dibujarSiCambia = crearRenderMemoizado([
     "usuarios",
+    "planes",
     "filtroUsuarios",
     "cargandoUsuarios",
     "errorUsuarios",
@@ -97,7 +112,8 @@ export function crearVistaUsuarios({ almacen, irARenovar }) {
   }
 
   function pintarTabla(estado) {
-    const { usuarios, filtroUsuarios, cargandoUsuarios, errorUsuarios } = estado;
+    const { usuarios, planes, filtroUsuarios, cargandoUsuarios, errorUsuarios } = estado;
+    const planesPorId = new Map(planes.map((plan) => [plan.id, plan]));
     const visibles = ordenarUsuarios(
       filtrarPorEstado(filtrarUsuarios(usuarios, filtroUsuarios), filtroEstado),
       orden
@@ -112,7 +128,7 @@ export function crearVistaUsuarios({ almacen, irARenovar }) {
       contenidoDeTabla({
         error: errorUsuarios,
         cargando: cargandoUsuarios,
-        elementos: visibles.map(filaUsuario),
+        elementos: visibles.map((usuario) => filaUsuario(usuario, planesPorId)),
         mensajeVacio: "No hay usuarios o no coincide la búsqueda.",
         columnas: COLUMNAS_USUARIOS,
       })

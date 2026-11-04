@@ -8,7 +8,35 @@
   <link rel="stylesheet" href="css/style.css" />
 </head>
 
-<body>
+<body class="auth-checking">
+  <!-- Pantalla de carga mientras se comprueba la sesión -->
+  <div class="app-loading" id="appLoading" aria-live="polite">
+    <span class="app-loading__spinner" aria-hidden="true"></span>
+    <span class="app-loading__text" id="appLoadingTexto">Cargando...</span>
+  </div>
+
+  <!-- Pantalla de inicio de sesión -->
+  <div class="login-screen" id="loginScreen">
+    <div class="login-card">
+      <img src="assets/FD-Logo.jpeg" alt="" class="login-logo" onerror="this.style.display='none'" />
+      <h1 class="login-brand">FUERZA <span>DELTA</span></h1>
+      <p class="login-sub">Ingresa para gestionar socios y pagos</p>
+      <form id="formLogin" class="form login-form" novalidate>
+        <label class="label" for="loginUsuario">Usuario</label>
+        <input type="text" id="loginUsuario" class="input" autocomplete="username" autocapitalize="none"
+          autocorrect="off" spellcheck="false" placeholder="Ej. admin" />
+        <label class="label" for="loginPassword">Contraseña</label>
+        <div class="login-password">
+          <input type="password" id="loginPassword" class="input" autocomplete="current-password"
+            placeholder="••••••••" />
+          <button type="button" id="loginVerPassword" class="login-password__toggle"
+            aria-label="Mostrar contraseña">Mostrar</button>
+        </div>
+        <p id="loginError" class="login-error" role="alert" hidden></p>
+        <button type="submit" id="btnIngresar" class="btn btn--primary login-submit">Ingresar</button>
+      </form>
+    </div>
+  </div>
   <header class="header">
     <button type="button" class="nav-toggle" id="navToggle" aria-label="Abrir menú" aria-controls="nav"
       aria-expanded="false">☰</button>
@@ -18,12 +46,18 @@
     </div>
     <nav class="nav" id="nav">
       <a href="#inicio" class="nav-link active">Inicio</a>
+      <a href="#dashboard" class="nav-link" data-solo-admin>Dashboard</a>
       <a href="#usuarios" class="nav-link">Usuarios</a>
       <a href="#agregar-usuario" class="nav-link">Nuevo usuario</a>
       <a href="#registrar-pago" class="nav-link">Registrar pago</a>
-      <a href="#importar-usuarios" class="nav-link">Importar usuarios</a>
-      <a href="#planes" class="nav-link">Planes</a>
+      <a href="#importar-usuarios" class="nav-link" data-solo-admin>Importar usuarios</a>
+      <a href="#planes" class="nav-link" data-solo-admin>Planes</a>
+      <a href="#personal" class="nav-link" data-solo-admin>Personal</a>
     </nav>
+    <div class="header-user">
+      <span class="header-user__nombre" id="headerUsuarioNombre"></span>
+      <button type="button" class="btn btn--secondary btn--small header-user__salir" id="btnCerrarSesion">Salir</button>
+    </div>
   </header>
 
   <main class="main">
@@ -107,6 +141,108 @@
       </div>
     </section>
 
+    <!-- Sección Dashboard -->
+    <section id="dashboard" class="section">
+      <h2>Dashboard</h2>
+      <div class="dashboard-kpis">
+        <div class="card">
+          <span class="card-value" id="kpiActivos">-</span>
+          <span class="card-label">Socios activos</span>
+        </div>
+        <div class="card">
+          <span class="card-value" id="kpiVencidos">-</span>
+          <span class="card-label">Socios vencidos</span>
+        </div>
+        <div class="card">
+          <span class="card-value" id="kpiIngresoMes">-</span>
+          <span class="card-label">Ingreso del mes</span>
+        </div>
+        <div class="card">
+          <span class="card-value" id="kpiTicketPromedio">-</span>
+          <span class="card-label">Ticket promedio del mes</span>
+        </div>
+      </div>
+
+      <div class="block dashboard-export">
+        <h3>Exportar a Excel</h3>
+        <p class="form-hint">Define el rango: los <strong>pagos</strong> se filtran por <strong>fecha de pago</strong>. En socios se incluyen quienes tuvieron pago en el rango, registro o vencimiento de membresía en esas fechas. El estado activo/vencido se calcula al día «Hasta».</p>
+        <div class="dashboard-export__fechas">
+          <div class="dashboard-rango-fechas__field">
+            <label class="label" for="exportDesde">Desde</label>
+            <input type="date" id="exportDesde" class="input" />
+          </div>
+          <div class="dashboard-rango-fechas__field">
+            <label class="label" for="exportHasta">Hasta</label>
+            <input type="date" id="exportHasta" class="input" />
+          </div>
+        </div>
+        <div class="dashboard-export-actions">
+          <button type="button" id="btnExportExcelTodo" class="btn btn--primary">Todo (un solo archivo)</button>
+          <button type="button" id="btnExportExcelActivos" class="btn btn--outline">Activos / vencidos</button>
+          <button type="button" id="btnExportExcelMetodos" class="btn btn--outline">Métodos de pago</button>
+          <button type="button" id="btnExportExcelIngresos" class="btn btn--outline">Ingresos</button>
+          <button type="button" id="btnExportExcelPlanes" class="btn btn--outline">Planes vendidos</button>
+        </div>
+      </div>
+
+      <div class="dashboard-grid">
+        <div class="block dashboard-chart-card">
+          <div class="dashboard-chart-title-row">
+            <h3>Activos vs vencidos</h3>
+            <button type="button" class="btn btn--outline btn--small" id="btnExportExcelActivosInline" title="Usa las fechas de exportación de arriba">Excel</button>
+          </div>
+          <div id="chartEstadoMembresias" class="chart-container"></div>
+        </div>
+        <div class="block dashboard-chart-card">
+          <div class="dashboard-chart-title-row">
+            <h3>Métodos de pago</h3>
+            <button type="button" class="btn btn--outline btn--small" id="btnExportExcelMetodosInline">Excel</button>
+          </div>
+          <div id="chartMetodosPago" class="chart-container"></div>
+        </div>
+        <div class="block dashboard-chart-card dashboard-chart-card--full">
+          <div class="dashboard-chart-header">
+            <h3 id="tituloChartIngresos">Ingresos últimos 6 meses</h3>
+            <label for="filtroIngresosPeriodo" class="dashboard-filter-label">Período</label>
+            <select id="filtroIngresosPeriodo" class="input dashboard-filter-select">
+              <option value="1">Último mes</option>
+              <option value="2">Últimos 2 meses</option>
+              <option value="3">Últimos 3 meses</option>
+              <option value="6" selected>Últimos 6 meses</option>
+              <option value="12">Último año</option>
+              <option value="24">Últimos 2 años</option>
+              <option value="all">Todo el histórico</option>
+              <option value="custom">Entre fechas…</option>
+            </select>
+            <button type="button" class="btn btn--outline btn--small" id="btnExportExcelIngresosInline" title="Usa las fechas de exportación de arriba">Excel</button>
+          </div>
+          <div id="ingresosRangoPersonalizado" class="dashboard-rango-fechas" hidden>
+            <p class="dashboard-rango-fechas__hint">Elige el intervalo (por ejemplo del 1 al 15 de abril). Se agrupa por día, semana o mes según la cantidad de días.</p>
+            <div class="dashboard-rango-fechas__row">
+              <div class="dashboard-rango-fechas__field">
+                <label class="label" for="ingresoFechaDesde">Desde</label>
+                <input type="date" id="ingresoFechaDesde" class="input" />
+              </div>
+              <div class="dashboard-rango-fechas__field">
+                <label class="label" for="ingresoFechaHasta">Hasta</label>
+                <input type="date" id="ingresoFechaHasta" class="input" />
+              </div>
+              <button type="button" id="btnAplicarRangoIngresos" class="btn btn--secondary">Aplicar rango</button>
+            </div>
+            <p id="ingresosRangoError" class="dashboard-rango-fechas__error" role="alert" hidden></p>
+          </div>
+          <div id="chartIngresosMensuales" class="chart-container"></div>
+        </div>
+        <div class="block dashboard-chart-card dashboard-chart-card--full">
+          <div class="dashboard-chart-title-row">
+            <h3>Planes más vendidos</h3>
+            <button type="button" class="btn btn--outline btn--small" id="btnExportExcelPlanesInline">Excel</button>
+          </div>
+          <div id="chartPlanesVendidos" class="chart-container"></div>
+        </div>
+      </div>
+    </section>
+
     <!-- Sección Lista de usuarios -->
     <section id="usuarios" class="section">
       <h2>Usuarios</h2>
@@ -128,6 +264,8 @@
             <option value="nombre-za">Nombre Z-A</option>
             <option value="fecha-proxima">Fecha más próxima</option>
             <option value="fecha-lejana">Fecha más lejana</option>
+            <option value="pago-reciente">Pago más reciente</option>
+            <option value="pago-antiguo">Pago más antiguo</option>
           </select>
         </label>
       </div>
@@ -141,6 +279,12 @@
                 </button>
               </th>
               <th scope="col">Teléfono</th>
+              <th scope="col">Plan</th>
+              <th scope="col" data-col="pago">
+                <button type="button" class="tabla__ordenar" data-col="pago">
+                  Último pago <span class="tabla__orden-marca" aria-hidden="true"></span>
+                </button>
+              </th>
               <th scope="col" data-col="fecha">
                 <button type="button" class="tabla__ordenar" data-col="fecha">
                   Vence <span class="tabla__orden-marca" aria-hidden="true"></span>
@@ -149,7 +293,7 @@
               <th scope="col">Estado</th>
               <th scope="col">WhatsApp</th>
               <th scope="col">Renovar</th>
-              <th scope="col">Eliminar</th>
+              <th scope="col" data-solo-admin>Eliminar</th>
             </tr>
           </thead>
           <tbody id="listaUsuarios"></tbody>
@@ -278,6 +422,34 @@
         <tbody id="listaPlanes"></tbody>
       </table>
     </section>
+
+    <!-- Sección Personal (cuentas de la app, solo administrador) -->
+    <section id="personal" class="section">
+      <h2>Personal</h2>
+      <p class="form-hint">Cuentas de quienes usan la app. Cada persona ingresa con su usuario y contraseña. <strong>Administrador</strong> ve todo; <strong>Recepción</strong> solo Inicio, Usuarios, Nuevo usuario y Registrar pago, y no puede eliminar socios.</p>
+      <div id="mensajePersonal" class="mensaje-resultado" role="status" aria-live="polite"></div>
+      <div class="tabla-encabezado">
+        <button type="button" id="btnNuevoStaff" class="btn-agregar" aria-label="Agregar cuenta" title="Agregar cuenta">
+          <svg class="btn-agregar__icono" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path fill="currentColor" d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm5 11h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/>
+          </svg>
+        </button>
+      </div>
+      <div class="tabla-wrap">
+        <table class="tabla tabla--personal" aria-label="Cuentas del personal">
+          <thead>
+            <tr>
+              <th scope="col">Usuario</th>
+              <th scope="col">Nombre</th>
+              <th scope="col">Rol</th>
+              <th scope="col">Estado</th>
+              <th scope="col">Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="listaPersonal"></tbody>
+        </table>
+      </div>
+    </section>
   </main>
 
   <div id="modalPlan" class="modal-overlay" aria-hidden="true">
@@ -306,6 +478,45 @@
     </div>
   </div>
 
+  <div id="modalStaff" class="modal-overlay" aria-hidden="true">
+    <div class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="tituloFormStaff">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 class="modal-title" id="tituloFormStaff">Nueva cuenta</h3>
+        </div>
+        <form id="formStaff" class="form" novalidate>
+          <div class="modal-body">
+            <div id="mensajeStaffModal" class="mensaje-resultado" role="status" aria-live="polite"></div>
+            <input type="hidden" id="staffUid" />
+            <label class="label" for="staffUsuario">Usuario (para ingresar)</label>
+            <input type="text" id="staffUsuario" class="input" maxlength="30" autocomplete="off" autocapitalize="none"
+              spellcheck="false" placeholder="Ej. recepcion1" />
+            <label class="label" for="staffNombre">Nombre</label>
+            <input type="text" id="staffNombre" class="input" maxlength="80" autocomplete="off" placeholder="Ej. Laura Gómez" />
+            <div id="staffGrupoContrasena" class="form-grupo">
+              <label class="label" for="staffContrasena">Contraseña</label>
+              <input type="text" id="staffContrasena" class="input" autocomplete="new-password" spellcheck="false"
+                placeholder="Mínimo 6 caracteres" />
+              <p class="form-hint form-hint--small">Compártela con la persona. Después no se puede ver ni cambiar desde la app.</p>
+            </div>
+            <label class="label" for="staffRol">Rol</label>
+            <select id="staffRol" class="input">
+              <option value="recepcion">Recepción</option>
+              <option value="admin">Administrador</option>
+            </select>
+            <p id="staffAyudaRol" class="form-hint form-hint--small" hidden>No puedes cambiar tu propio rol.</p>
+          </div>
+          <div class="modal-footer">
+            <button type="button" id="btnCancelarStaff" class="btn btn--secondary">Cancelar</button>
+            <button type="submit" class="btn btn--primary" id="btnGuardarStaff">Crear cuenta</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/apexcharts@3.54.1/dist/apexcharts.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script type="module" src="js/main.js"></script>
 </body>
 

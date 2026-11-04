@@ -1,4 +1,4 @@
-import { collection, db, doc, getDocs, query, Timestamp, where } from "../firebase/cliente.js";
+import { collection, db, doc, getDocs, onSnapshot, query, Timestamp, where } from "../firebase/cliente.js";
 
 const COLECCION_PAGOS = "pagos";
 
@@ -37,6 +37,41 @@ export function documentoDePago({
     origen,
     creadoEn: Timestamp.now(),
   };
+}
+
+function aFecha(valor) {
+  return valor && typeof valor.toDate === "function" ? valor.toDate() : null;
+}
+
+function aPago(documento) {
+  const datos = documento.data();
+  return {
+    id: documento.id,
+    usuarioId: datos.usuarioId ?? "",
+    planId: datos.planId ?? "",
+    montoPagado: Number(datos.montoPagado) || 0,
+    metodoPago: datos.metodoPago || "Sin definir",
+    fechaPago: aFecha(datos.fechaPago),
+    origen: datos.origen ?? ORIGEN_PAGO.MANUAL,
+  };
+}
+
+/**
+ * Escucha los pagos en tiempo real para el Dashboard. Los registros de
+ * importación (monto 0, sin cobro real) se excluyen: no son ingresos y
+ * distorsionarían el ticket promedio, los métodos de pago y los planes vendidos.
+ */
+export function escucharPagos(alRecibir, alFallar) {
+  return onSnapshot(
+    collection(db, COLECCION_PAGOS),
+    (snapshot) => {
+      const pagos = snapshot.docs
+        .map(aPago)
+        .filter((pago) => pago.origen !== ORIGEN_PAGO.IMPORTACION);
+      alRecibir(pagos);
+    },
+    alFallar
+  );
 }
 
 /** Referencias de todos los pagos de un usuario, para el borrado en cascada. */

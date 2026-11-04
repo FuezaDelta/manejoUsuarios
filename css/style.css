@@ -1280,3 +1280,777 @@ select.input {
     gap: 0.4rem;
   }
 }
+
+/* ===== Dashboard (gráficos y exportación a Excel) ===== */
+.dashboard-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+}
+
+.dashboard-chart-card {
+  margin-bottom: 0;
+}
+
+.dashboard-chart-card--full {
+  grid-column: 1 / -1;
+}
+
+.dashboard-chart-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.dashboard-chart-header h3 {
+  margin: 0;
+  margin-right: auto;
+}
+
+.dashboard-chart-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.dashboard-chart-title-row h3 {
+  margin: 0;
+}
+
+.dashboard-export {
+  margin-bottom: 1rem;
+}
+
+.dashboard-export h3 {
+  margin: 0 0 0.5rem;
+}
+
+.dashboard-export__fechas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  max-width: 520px;
+}
+
+.dashboard-export-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.dashboard-filter-label {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.dashboard-filter-select {
+  width: auto;
+  min-width: 185px;
+  padding: 0.45rem 2rem 0.45rem 0.8rem;
+  font-size: 0.9rem;
+}
+
+.dashboard-rango-fechas {
+  margin-bottom: 1rem;
+  padding: 0.75rem 1rem;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.dashboard-rango-fechas__hint {
+  margin: 0 0 0.75rem;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.dashboard-rango-fechas__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.75rem 1rem;
+}
+
+.dashboard-rango-fechas__field {
+  flex: 1 1 140px;
+  min-width: 140px;
+}
+
+.dashboard-rango-fechas__field .label {
+  margin-bottom: 0.35rem;
+}
+
+.dashboard-rango-fechas__row .btn {
+  margin-top: 0;
+  align-self: flex-end;
+}
+
+.dashboard-rango-fechas__error {
+  margin: 0.5rem 0 0;
+  font-size: 0.85rem;
+  color: var(--danger);
+}
+
+.chart-container {
+  min-height: 290px;
+}
+
+@media (min-width: 768px) {
+  .dashboard-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* ===== Autenticación: estados de la app ===== */
+body:not(.auth-in) .header,
+body:not(.auth-in) .main {
+  display: none;
+}
+
+.app-loading,
+.login-screen {
+  display: none;
+}
+
+body.auth-checking .app-loading {
+  display: flex;
+}
+
+body.auth-out .login-screen {
+  display: flex;
+}
+
+/* Pantalla de carga */
+.app-loading {
+  position: fixed;
+  inset: 0;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  color: var(--text-muted);
+}
+
+.app-loading__spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--border);
+  border-top-color: var(--olive);
+  border-radius: 50%;
+  animation: girar 0.8s linear infinite;
+}
+
+@keyframes girar {
+  to { transform: rotate(360deg); }
+}
+
+/* Pantalla de login */
+.login-screen {
+  min-height: 100vh;
+  min-height: 100dvh;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem 1rem;
+  background:
+    radial-gradient(ellipse at top, rgba(109, 124, 61, 0.18), transparent 60%),
+    var(--bg);
+}
+
+.login-card {
+  width: 100%;
+  max-width: 380px;
+  padding: 2rem 1.5rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-top: 3px solid var(--olive);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  text-align: center;
+  animation: fadeSlideIn 260ms ease-out;
+}
+
+.login-logo {
+  width: 88px;
+  height: 88px;
+  object-fit: cover;
+  border-radius: 50%;
+  border: 2px solid var(--olive);
+  margin: 0 auto 1rem;
+  display: block;
+}
+
+.login-brand {
+  margin: 0;
+  font-size: 1.6rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: var(--cream);
+}
+
+.login-brand span {
+  color: var(--olive);
+}
+
+.login-sub {
+  margin: 0.35rem 0 1.5rem;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.login-form {
+  text-align: left;
+}
+
+.login-password {
+  position: relative;
+}
+
+.login-password .input {
+  padding-right: 5.5rem;
+}
+
+.login-password__toggle {
+  position: absolute;
+  top: 50%;
+  right: 0.5rem;
+  transform: translateY(-50%);
+  padding: 0.35rem 0.6rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--olive);
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.login-password__toggle:hover,
+.login-password__toggle:focus-visible {
+  background: rgba(109, 124, 61, 0.15);
+  outline: none;
+}
+
+.login-error {
+  margin: 0.25rem 0 0;
+  padding: 0.6rem 0.85rem;
+  font-size: 0.875rem;
+  color: var(--danger);
+  background: rgba(201, 74, 74, 0.12);
+  border: 1px solid rgba(201, 74, 74, 0.5);
+  border-radius: var(--radius);
+}
+
+.login-submit {
+  width: 100%;
+  margin-top: 0.75rem;
+}
+
+.login-submit:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+/* Usuario en sesión (encabezado) */
+.header-user {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: auto;
+}
+
+.header-user__nombre {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  max-width: 110px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.header-user__nombre::before {
+  content: "👤 ";
+}
+
+.header-user__salir {
+  margin: 0;
+}
+
+@media (min-width: 640px) {
+  .header-user {
+    margin-left: 0.75rem;
+    padding-left: 0.75rem;
+    border-left: 1px solid var(--border);
+  }
+}
+
+@media (max-width: 380px) {
+  .header-user__nombre {
+    display: none;
+  }
+}
+
+/* ===== Roles y sección Personal ===== */
+body.rol-recepcion [data-solo-admin],
+body.rol-recepcion .tabla__eliminar {
+  display: none !important;
+}
+
+.etiqueta {
+  display: inline-block;
+  padding: 0.15rem 0.55rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.etiqueta--activa {
+  color: var(--olive);
+  background: rgba(109, 124, 61, 0.18);
+}
+
+.etiqueta--inactiva {
+  color: var(--text-muted);
+  background: rgba(232, 228, 220, 0.08);
+}
+
+.etiqueta--tu {
+  margin-left: 0.35rem;
+  color: var(--bg);
+  background: var(--olive);
+}
+
+.fila--inactiva td:not(.tabla__acciones) {
+  opacity: 0.55;
+}
+
+.tabla--personal .tabla__acciones-grupo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.tabla--personal .btn--small {
+  margin: 0;
+}
+
+.form-grupo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.form-grupo[hidden] {
+  display: none;
+}
+
+.form-hint--small {
+  margin: 0;
+  font-size: 0.8rem;
+}
+
+/* Con 8 secciones el menú no cabe en una línea en pantallas medianas:
+   se compacta en lugar de partirse en dos filas. */
+@media (min-width: 640px) and (max-width: 1199px) {
+  .header {
+    gap: 0.5rem;
+  }
+
+  .logo {
+    display: none;
+  }
+
+  .nav-link {
+    padding: 0.45rem 0.5rem;
+    font-size: 0.85rem;
+    white-space: nowrap;
+  }
+
+  .header-user {
+    margin-left: 0.25rem;
+    padding-left: 0.5rem;
+  }
+
+  .header-user__nombre {
+    display: none;
+  }
+}
+
+/* Tabletas: si aun así no cabe, el menú se desplaza de lado en vez de desbordar. */
+@media (min-width: 640px) and (max-width: 899px) {
+  .nav {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .nav::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* ===== Bienvenida al iniciar sesión ===== */
+.bienvenida {
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  background:
+    radial-gradient(circle at 50% 38%, rgba(109, 124, 61, 0.28), transparent 55%),
+    radial-gradient(circle at 50% 120%, rgba(109, 124, 61, 0.18), transparent 60%),
+    rgba(10, 10, 10, 0.97);
+  backdrop-filter: blur(6px);
+  cursor: pointer;
+  text-align: center;
+  animation: bv-aparecer 350ms ease-out both;
+}
+
+.bienvenida--saliendo {
+  animation: bv-salir 550ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.bienvenida__contenido {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 560px;
+}
+
+.bienvenida__logo {
+  position: relative;
+  width: 112px;
+  height: 112px;
+  margin-bottom: 1.5rem;
+  animation: bv-logo 750ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+.bienvenida__logo img {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+  border: 3px solid var(--olive);
+  box-shadow: 0 0 0 6px rgba(109, 124, 61, 0.15), 0 10px 40px rgba(0, 0, 0, 0.6);
+}
+
+.bienvenida__onda {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 2px solid var(--olive);
+  opacity: 0;
+  animation: bv-onda 1.8s ease-out 500ms infinite;
+}
+
+.bienvenida__onda--2 {
+  animation-delay: 1.4s;
+}
+
+.bienvenida__saludo {
+  margin: 0;
+  font-size: 1.05rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  animation: bv-subir 500ms ease-out 300ms both;
+}
+
+.bienvenida__nombre {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin: 0.25rem 0 0.75rem;
+  font-size: clamp(2rem, 7vw, 3.4rem);
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: 0.01em;
+  color: var(--cream);
+  perspective: 600px;
+}
+
+.bienvenida__letra {
+  display: inline-block;
+  opacity: 0;
+  transform-origin: 50% 100%;
+  animation: bv-letra 550ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.bienvenida__rol {
+  display: inline-block;
+  padding: 0.3rem 0.9rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--bg);
+  background: var(--olive);
+  border-radius: 999px;
+  box-shadow: 0 0 24px rgba(109, 124, 61, 0.45);
+  animation: bv-escala 450ms cubic-bezier(0.34, 1.56, 0.64, 1) 900ms both;
+}
+
+.bienvenida__rol:empty {
+  display: none;
+}
+
+.bienvenida__mensaje {
+  margin: 1.25rem 0 0.25rem;
+  font-size: 1rem;
+  color: var(--text);
+  animation: bv-subir 500ms ease-out 1100ms both;
+}
+
+.bienvenida__fecha {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  animation: bv-subir 500ms ease-out 1250ms both;
+}
+
+.bienvenida__barra {
+  width: min(220px, 60vw);
+  height: 3px;
+  margin-top: 1.75rem;
+  overflow: hidden;
+  background: var(--border);
+  border-radius: 999px;
+  animation: bv-aparecer 300ms ease-out 1300ms both;
+}
+
+.bienvenida__progreso {
+  display: block;
+  height: 100%;
+  width: 100%;
+  background: linear-gradient(90deg, var(--olive-dark), var(--olive), var(--accent-hover));
+  transform-origin: left center;
+  animation: bv-progreso var(--bienvenida-duracion, 3000ms) linear both;
+}
+
+.bienvenida__pista {
+  position: absolute;
+  bottom: 1.5rem;
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  opacity: 0.7;
+  animation: bv-aparecer 400ms ease-out 1600ms both;
+}
+
+@keyframes bv-aparecer {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes bv-salir {
+  to {
+    opacity: 0;
+    transform: scale(1.06);
+    filter: blur(6px);
+  }
+}
+
+@keyframes bv-logo {
+  from {
+    opacity: 0;
+    transform: scale(0.4) rotate(-25deg);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) rotate(0);
+  }
+}
+
+@keyframes bv-onda {
+  0% { opacity: 0.7; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1.9); }
+}
+
+@keyframes bv-subir {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes bv-letra {
+  from {
+    opacity: 0;
+    transform: translateY(0.6em) rotateX(-80deg);
+    filter: blur(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) rotateX(0);
+    filter: blur(0);
+  }
+}
+
+@keyframes bv-escala {
+  from { opacity: 0; transform: scale(0.6); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes bv-progreso {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bienvenida *,
+  .bienvenida {
+    animation-duration: 1ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+  }
+
+  .bienvenida__progreso {
+    animation-duration: var(--bienvenida-duracion, 1600ms) !important;
+  }
+
+  .bienvenida__onda {
+    display: none;
+  }
+}
+
+/* Personal: los botones de acción en una sola fila */
+.tabla--personal .tabla__acciones {
+  white-space: nowrap;
+}
+
+.tabla--personal .tabla__acciones-grupo {
+  flex-wrap: nowrap;
+}
+
+/* ===== Usuarios: columna "Último pago" ===== */
+.tabla__pago {
+  width: 1%;
+  white-space: nowrap;
+}
+
+.tabla--usuarios th[data-col="pago"],
+.tabla--usuarios th[data-col="pago"] .tabla__ordenar {
+  white-space: nowrap;
+}
+
+@media (min-width: 640px) {
+  .tabla--usuarios {
+    min-width: 58rem;
+  }
+}
+
+/* En celular hay dos fechas en la fila: cada una lleva su rótulo. */
+@media (max-width: 639px) {
+  .tabla--usuarios tr {
+    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-areas:
+      "nombre nombre estado"
+      "tel pago fecha"
+      "whatsapp renovar eliminar";
+  }
+
+  .tabla--usuarios .tabla__nombre {
+    border-bottom: 1px solid var(--tabla-borde);
+  }
+
+  .tabla--usuarios .tabla__estado {
+    border-left: none;
+    border-bottom: 1px solid var(--tabla-borde);
+    text-align: right;
+  }
+
+  .tabla--usuarios .tabla__pago {
+    grid-area: pago;
+    border-left: 1px solid var(--tabla-borde);
+    font-size: 0.875rem;
+  }
+
+  .tabla--usuarios .tabla__pago::before,
+  .tabla--usuarios .tabla__fecha::before {
+    display: block;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+    opacity: 0.8;
+  }
+
+  .tabla--usuarios .tabla__pago::before {
+    content: "Último pago";
+  }
+
+  .tabla--usuarios .tabla__fecha::before {
+    content: "Vence";
+  }
+}
+
+/* ===== Usuarios: columna "Plan" ===== */
+.tabla__plan {
+  width: 1%;
+  white-space: nowrap;
+}
+
+.etiqueta--plan {
+  color: var(--cream);
+  background: rgba(109, 124, 61, 0.22);
+  border: 1px solid rgba(109, 124, 61, 0.45);
+}
+
+.tabla__sin-dato {
+  color: var(--text-muted);
+}
+
+@media (min-width: 640px) {
+  .tabla--usuarios {
+    min-width: 64rem;
+  }
+}
+
+/* Celular: 6 columnas de rejilla para repartir 4 filas sin huecos. */
+@media (max-width: 639px) {
+  .tabla--usuarios tr {
+    grid-template-columns: repeat(6, 1fr);
+    grid-template-areas:
+      "nombre nombre nombre nombre estado estado"
+      "tel tel tel plan plan plan"
+      "pago pago pago fecha fecha fecha"
+      "whatsapp whatsapp renovar renovar eliminar eliminar";
+  }
+
+  .tabla--usuarios .tabla__plan {
+    grid-area: plan;
+    border-left: 1px solid var(--tabla-borde);
+    text-align: right;
+  }
+
+  .tabla--usuarios .tabla__pago,
+  .tabla--usuarios .tabla__fecha {
+    border-top: 1px solid var(--tabla-borde);
+  }
+
+  .tabla--usuarios .tabla__pago {
+    border-left: none;
+  }
+
+  .tabla--usuarios .tabla__fecha {
+    border-left: 1px solid var(--tabla-borde);
+  }
+}

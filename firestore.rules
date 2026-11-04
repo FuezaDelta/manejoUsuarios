@@ -5,22 +5,27 @@ rules_version = '2';
 // ─────────────────────────────────────────────────────────────────────────────
 // IMPORTANTE — estado actual
 //
-// La app todavía no tiene inicio de sesión, así que `modoAbierto()` devuelve
-// true y cualquiera que conozca el projectId puede leer y escribir los datos de
-// los socios. Es un riesgo real y consciente, no un descuido.
+// La app ya tiene inicio de sesión (Authentication con correo/contraseña) y
+// la colección `staff` guarda el rol de cada persona (admin / recepcion), con
+// el UID de Authentication como id del documento.
 //
-// Para cerrarlo, cuando se añada autenticación:
-//   1. Firebase Console → Authentication → habilitar un proveedor.
-//   2. Crear el usuario o usuarios que administrarán el gimnasio.
-//   3. Cambiar `modoAbierto()` a false aquí abajo y desplegar estas reglas
-//      (Firebase Console → Firestore → Reglas, o
+// Mientras `modoAbierto()` devuelva true, socios, pagos y planes siguen
+// abiertos para cualquiera que conozca el projectId (la colección `staff`
+// no: esa siempre exige sesión). Es un riesgo real y consciente.
+//
+// Para cerrarlo, cuando la versión con login esté publicada en GitHub Pages:
+//   1. Cambiar `modoAbierto()` a false aquí abajo.
+//   2. Desplegar estas reglas (Firebase Console → Firestore → Reglas, o
 //      `firebase deploy --only firestore:rules`).
+// Desde ese momento solo el personal activo lee y escribe, y solo un
+// administrador edita planes o borra socios y pagos.
 //
 // Mientras tanto, estas reglas ya aportan tres cosas que las anteriores no:
 //   · Se valida la forma de cada documento, así que nadie puede inyectar campos
 //     inesperados ni textos gigantes en la base.
-//   · Los planes se pueden crear y editar desde la app, pero no borrar: los
-//     socios guardan el id del plan y un borrado dejaría membresías huérfanas.
+//   · Los planes se crean, editan y borran desde la app (solo un administrador
+//     cuando `modoAbierto()` sea false). Un borrado no toca las membresías ya
+//     cobradas: solo deja de ofrecerse para cobros nuevos.
 //   · Cualquier colección no declarada queda denegada.
 //
 // Las actualizaciones se validan por los campos que cambian
@@ -37,8 +42,26 @@ service cloud.firestore {
       return true;
     }
 
+    function perfil() {
+      return get(/databases/$(database)/documents/staff/$(request.auth.uid)).data;
+    }
+
+    function esPersonalActivo() {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/staff/$(request.auth.uid))
+        && perfil().activo == true;
+    }
+
+    function esAdmin() {
+      return esPersonalActivo() && perfil().rol == 'admin';
+    }
+
     function autorizado() {
-      return modoAbierto() || request.auth != null;
+      return modoAbierto() || esPersonalActivo();
+    }
+
+    function soloAdmin() {
+      return modoAbierto() || esAdmin();
     }
 
     function textoOpcional(datos, campo, maxLongitud) {
@@ -135,16 +158,16 @@ service cloud.firestore {
 
     match /planes/{planId} {
       allow read: if autorizado();
-      allow create: if autorizado() && planNuevoValido();
-      allow update: if autorizado() && planActualizacionValida();
-      allow delete: if false;
+      allow create: if soloAdmin() && planNuevoValido();
+      allow update: if soloAdmin() && planActualizacionValida();
+      allow delete: if soloAdmin();
     }
 
     match /usuarios/{usuarioId} {
       allow read: if autorizado();
       allow create: if autorizado() && usuarioNuevoValido();
       allow update: if autorizado() && renovacionValida();
-      allow delete: if autorizado();
+      allow delete: if soloAdmin();
     }
 
     // Los pagos son un registro histórico: se crean y, en el borrado en cascada
@@ -153,7 +176,30 @@ service cloud.firestore {
       allow read: if autorizado();
       allow create: if autorizado() && pagoValido();
       allow update: if false;
-      allow delete: if autorizado();
+      allow delete: if soloAdmin();
+    }
+
+    // Cuentas del personal. El id del documento es el UID de Authentication.
+    // Nadie puede quitarse a sí mismo el rol ni desactivarse ni borrarse: así
+    // la app nunca se queda sin un administrador que pueda entrar.
+    function cuentaStaffValida(d) {
+      return d.keys().hasOnly(['usuario', 'nombre', 'rol', 'activo', 'creadoEn'])
+        && conContenido(d.usuario, 30)
+        && conContenido(d.nombre, 80)
+        && d.rol in ['admin', 'recepcion']
+        && d.activo is bool
+        && fechaOpcional(d, 'creadoEn');
+    }
+
+    match /staff/{uid} {
+      allow read: if request.auth != null && (request.auth.uid == uid || esAdmin());
+      allow create: if esAdmin() && cuentaStaffValida(request.resource.data);
+      allow update: if esAdmin()
+        && cuentaStaffValida(request.resource.data)
+        && request.resource.data.usuario == resource.data.usuario
+        && (uid != request.auth.uid
+          || !request.resource.data.diff(resource.data).affectedKeys().hasAny(['rol', 'activo']));
+      allow delete: if esAdmin() && uid != request.auth.uid;
     }
 
     // Cualquier otra colección queda cerrada.
