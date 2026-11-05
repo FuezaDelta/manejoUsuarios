@@ -411,10 +411,24 @@ document.getElementById("formUsuario").addEventListener("submit", async (e) => {
     hoy.setHours(0, 0, 0, 0);
     const estadoMembresia = fechaFin >= hoy ? "activa" : "vencida";
 
-    const userRef = await addDoc(collection(db, "usuarios"), {
+        // El celular, en 10 dígitos, es el ID del documento: así lo encuentra
+    // la consulta pública de membresías (CheckMensualidad).
+    const celular = String(telefono).replace(/\D/g, "").replace(/^57(?=3\d{9}$)/, "");
+    if (!/^3\d{9}$/.test(celular)) {
+      alert("El celular debe tener 10 dígitos y empezar por 3.");
+      return;
+    }
+
+    const userRef = doc(db, "usuarios", celular);
+    if ((await getDoc(userRef)).exists()) {
+      alert("Ya existe un socio registrado con ese celular.");
+      return;
+    }
+
+    await setDoc(userRef, {
       nombre,
       apellido,
-      telefono,
+      telefono: celular,
       email: email || null,
       fechaRegistro: Timestamp.now(),
       estadoMembresia,
@@ -422,7 +436,6 @@ document.getElementById("formUsuario").addEventListener("submit", async (e) => {
       fechaInicioMembresia: Timestamp.fromDate(fechaPago),
       fechaFinMembresia: Timestamp.fromDate(fechaFin),
     });
-
     await addDoc(collection(db, "pagos"), {
       usuarioId: userRef.id,
       planId,

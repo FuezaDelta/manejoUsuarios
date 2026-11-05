@@ -83,36 +83,55 @@ export function escucharUsuarios(alRecibir, alFallar) {
 }
 
 /**
- * Crea el usuario y su primer pago en un único lote atómico. Antes eran dos
- * `addDoc` sueltos: si el segundo fallaba quedaba un socio con membresía activa
- * y sin ningún pago que la respaldara.
+ * Referencia del documento de un socio. El id es su celular normalizado a 10
+ * dígitos: la web pública de consulta (CheckMensualidad) busca la membresía
+ * pidiendo `usuarios/{celular}`, porque sus reglas permiten leer un documento
+ * conocido pero no listar la colección. Un socio con id automático existe,
+ * pero nadie lo encuentra desde esa web.
+ */
+function referenciaDeSocio(telefono) {
+  return doc(db, COLECCION, telefono);
+}
+
+/**
+ * Crea el usuario y su primer pago en una transacción. La transacción comprueba
+ * antes que no exista ya un socio con ese celular: como el celular es el id,
+ * escribir sin mirar sobrescribiría al socio anterior y su membresía.
  */
 export async function crearUsuarioConPrimerPago({ usuario, pago }) {
   const { plan, montoPagado, metodoPago, fechaPago } = pago;
   const fechaFin = calcularFinMembresia(fechaPago, plan.duracionDias);
+  const referenciaUsuario = referenciaDeSocio(usuario.telefono);
 
-  const referenciaUsuario = doc(collection(db, COLECCION));
-  const lote = writeBatch(db);
+  await runTransaction(db, async (transaccion) => {
+    const existente = await transaccion.get(referenciaUsuario);
+    if (existente.exists()) {
+      const datos = existente.data();
+      const nombre = `${datos.nombre ?? ""} ${datos.apellido ?? ""}`.trim() || "otro socio";
+      throw new ErrorDeAplicacion(
+        `El celular ${usuario.telefono} ya está registrado a nombre de ${nombre}. Si es la misma persona, usa "Registrar pago" para renovarla.`
+      );
+    }
 
-  lote.set(referenciaUsuario, {
-    ...usuario,
-    fechaRegistro: Timestamp.now(),
-    ...documentoDeMembresia({ plan, fechaInicio: fechaPago, fechaFin }),
+    transaccion.set(referenciaUsuario, {
+      ...usuario,
+      fechaRegistro: Timestamp.now(),
+      ...documentoDeMembresia({ plan, fechaInicio: fechaPago, fechaFin }),
+    });
+
+    transaccion.set(
+      nuevaReferenciaDePago(),
+      documentoDePago({
+        usuarioId: referenciaUsuario.id,
+        plan,
+        montoPagado,
+        metodoPago,
+        fechaPago,
+        fechaFin,
+      })
+    );
   });
 
-  lote.set(
-    nuevaReferenciaDePago(),
-    documentoDePago({
-      usuarioId: referenciaUsuario.id,
-      plan,
-      montoPagado,
-      metodoPago,
-      fechaPago,
-      fechaFin,
-    })
-  );
-
-  await lote.commit();
   return { id: referenciaUsuario.id, fechaFin };
 }
 
@@ -211,7 +230,8 @@ export async function guardarUsuariosImportados(registros) {
     const lote = writeBatch(db);
 
     for (const registro of trozo) {
-      const referenciaUsuario = doc(collection(db, COLECCION));
+      // `prepararImportacion` ya descartó los celulares repetidos o existentes.
+      const referenciaUsuario = referenciaDeSocio(registro.usuario.telefono);
       const membresia = registro.membresia;
 
       lote.set(referenciaUsuario, {
